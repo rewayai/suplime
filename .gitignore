@@ -1,0 +1,15 @@
+# weights live on the Hugging Face Hub, not in git
+hf/segmentation/
+hf/embedding/
+hf/reproducible_research/
+*.bin
+*.ckpt
+*.pt
+
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+results/
+results_community1/

@@ -1,0 +1,36 @@
+MODEL LICENSE
+=============
+
+The pre-trained model weights in this repository (segmentation/pytorch_model.bin
+and embedding/pytorch_model.bin, "the Models") are licensed under the Creative
+Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+
+Full legal text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+Summary of terms:
+- Attribution (BY): you must give appropriate credit (Re:WayAI, https://huggingface.co/rewayai/suplime),
+  provide a link to the license, and indicate if changes were made.
+- NonCommercial (NC): you may not use the Models for commercial purposes.
+
+You are free to:
+- use the Models for academic research and other non-commercial purposes;
+- share and redistribute the Models with proper attribution and this notice;
+- modify or adapt the Models for non-commercial use.
+
+You must not:
+- use the Models or derivatives thereof for commercial purposes, including
+  products, services or paid offerings;
+- remove or alter this license notice in copies of the Models.
+
+Reason for this restriction:
+The segmentation model is trained on a mixture of corpora, several of which are
+licensed for research / non-commercial use only (e.g. RAMC, MSDWild, AVA-AVD)
+or under share-alike terms (AISHELL-4, AliMeeting, CC BY-SA 4.0). To respect the
+most restrictive source terms, the weights are released for research purposes
+only. The embedding model is a conversion of WeSpeaker's voxblink2_samresnet34_ft
+(trained on VoxBlink2 and VoxCeleb2) and is redistributed under the same terms.
+
+Note:
+The source code of the accompanying `suplime` Python package is licensed
+separately (MIT; the SimAM-ResNet backbone under Apache-2.0). This file applies
+only to the model weights.

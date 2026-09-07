@@ -1,0 +1,191 @@
+# pyannote.database configuration for the suplime training recipe.
+#
+# Copy to training/database.yml and replace /DATA with your corpus root. Every corpus has:
+#   audio/<uri>.wav          16 kHz mono WAV (see training/README.md for the channel used)
+#   rttm/<uri>.rttm          reference speaker turns
+#   uem/<uri>.uem            scored region (whole file if the corpus defines none)
+# URI lists (one uri per line) live next to the audio: /DATA/<corpus>/lists/{train,dev}.txt.
+# Train = the corpus' official training split; development = held-out files of your choice,
+# not used for training. RESEARCH-ONLY: RAMC, MSDWild and AVA-AVD are non-commercial and
+# AISHELL-4 / AliMeeting are share-alike; a model trained on them inherits those terms.
+
+Databases:
+  AMI:         /DATA/AMI/audio/{uri}.wav
+  ICSI:        /DATA/ICSI/audio/{uri}.wav
+  VoxConverse: /DATA/VoxConverse/audio/{uri}.wav
+  CHiME6:      /DATA/CHiME6/audio/{uri}.wav
+  DiPCo:       /DATA/DiPCo/audio/{uri}.wav
+  NOTSOFAR1:   /DATA/NOTSOFAR1/audio/{uri}.wav
+  AISHELL4:    /DATA/AISHELL4/audio/{uri}.wav
+  AMI_SDM:     /DATA/AMI_SDM/audio/{uri}.wav
+  AVA_AVD:     /DATA/AVA_AVD/audio/{uri}.wav
+  AliMeeting:  /DATA/AliMeeting/audio/{uri}.wav
+  MSDWild:     /DATA/MSDWild/audio/{uri}.wav
+  RAMC:        /DATA/RAMC/audio/{uri}.wav
+
+# One protocol per corpus: `train` is the corpus' training split, `development` a small
+# held-out subset of your choice (/DATA/<corpus>/lists/dev.txt).
+Protocols:
+  AMI:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/AMI/lists/train.txt
+          annotation: /DATA/AMI/rttm/{uri}.rttm
+          annotated: /DATA/AMI/uem/{uri}.uem
+        development:
+          uri: /DATA/AMI/lists/dev.txt
+          annotation: /DATA/AMI/rttm/{uri}.rttm
+          annotated: /DATA/AMI/uem/{uri}.uem
+  ICSI:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/ICSI/lists/train.txt
+          annotation: /DATA/ICSI/rttm/{uri}.rttm
+          annotated: /DATA/ICSI/uem/{uri}.uem
+        development:
+          uri: /DATA/ICSI/lists/dev.txt
+          annotation: /DATA/ICSI/rttm/{uri}.rttm
+          annotated: /DATA/ICSI/uem/{uri}.uem
+  VoxConverse:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/VoxConverse/lists/train.txt
+          annotation: /DATA/VoxConverse/rttm/{uri}.rttm
+          annotated: /DATA/VoxConverse/uem/{uri}.uem
+        development:
+          uri: /DATA/VoxConverse/lists/dev.txt
+          annotation: /DATA/VoxConverse/rttm/{uri}.rttm
+          annotated: /DATA/VoxConverse/uem/{uri}.uem
+  CHiME6:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/CHiME6/lists/train.txt
+          annotation: /DATA/CHiME6/rttm/{uri}.rttm
+          annotated: /DATA/CHiME6/uem/{uri}.uem
+        development:
+          uri: /DATA/CHiME6/lists/dev.txt
+          annotation: /DATA/CHiME6/rttm/{uri}.rttm
+          annotated: /DATA/CHiME6/uem/{uri}.uem
+  DiPCo:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/DiPCo/lists/train.txt
+          annotation: /DATA/DiPCo/rttm/{uri}.rttm
+          annotated: /DATA/DiPCo/uem/{uri}.uem
+        development:
+          uri: /DATA/DiPCo/lists/dev.txt
+          annotation: /DATA/DiPCo/rttm/{uri}.rttm
+          annotated: /DATA/DiPCo/uem/{uri}.uem
+  NOTSOFAR1:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/NOTSOFAR1/lists/train.txt
+          annotation: /DATA/NOTSOFAR1/rttm/{uri}.rttm
+          annotated: /DATA/NOTSOFAR1/uem/{uri}.uem
+        development:
+          uri: /DATA/NOTSOFAR1/lists/dev.txt
+          annotation: /DATA/NOTSOFAR1/rttm/{uri}.rttm
+          annotated: /DATA/NOTSOFAR1/uem/{uri}.uem
+  AISHELL4:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/AISHELL4/lists/train.txt
+          annotation: /DATA/AISHELL4/rttm/{uri}.rttm
+          annotated: /DATA/AISHELL4/uem/{uri}.uem
+        development:
+          uri: /DATA/AISHELL4/lists/dev.txt
+          annotation: /DATA/AISHELL4/rttm/{uri}.rttm
+          annotated: /DATA/AISHELL4/uem/{uri}.uem
+  AMI_SDM:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/AMI_SDM/lists/train.txt
+          annotation: /DATA/AMI_SDM/rttm/{uri}.rttm
+          annotated: /DATA/AMI_SDM/uem/{uri}.uem
+        development:
+          uri: /DATA/AMI_SDM/lists/dev.txt
+          annotation: /DATA/AMI_SDM/rttm/{uri}.rttm
+          annotated: /DATA/AMI_SDM/uem/{uri}.uem
+  AVA_AVD:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/AVA_AVD/lists/train.txt
+          annotation: /DATA/AVA_AVD/rttm/{uri}.rttm
+          annotated: /DATA/AVA_AVD/uem/{uri}.uem
+        development:
+          uri: /DATA/AVA_AVD/lists/dev.txt
+          annotation: /DATA/AVA_AVD/rttm/{uri}.rttm
+          annotated: /DATA/AVA_AVD/uem/{uri}.uem
+  AliMeeting:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/AliMeeting/lists/train.txt
+          annotation: /DATA/AliMeeting/rttm/{uri}.rttm
+          annotated: /DATA/AliMeeting/uem/{uri}.uem
+        development:
+          uri: /DATA/AliMeeting/lists/dev.txt
+          annotation: /DATA/AliMeeting/rttm/{uri}.rttm
+          annotated: /DATA/AliMeeting/uem/{uri}.uem
+  MSDWild:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/MSDWild/lists/train.txt
+          annotation: /DATA/MSDWild/rttm/{uri}.rttm
+          annotated: /DATA/MSDWild/uem/{uri}.uem
+        development:
+          uri: /DATA/MSDWild/lists/dev.txt
+          annotation: /DATA/MSDWild/rttm/{uri}.rttm
+          annotated: /DATA/MSDWild/uem/{uri}.uem
+  RAMC:
+    SpeakerDiarization:
+      suplime:
+        train:
+          uri: /DATA/RAMC/lists/train.txt
+          annotation: /DATA/RAMC/rttm/{uri}.rttm
+          annotated: /DATA/RAMC/uem/{uri}.uem
+        development:
+          uri: /DATA/RAMC/lists/dev.txt
+          annotation: /DATA/RAMC/rttm/{uri}.rttm
+          annotated: /DATA/RAMC/uem/{uri}.uem
+
+  # The meta-protocol suplime-train uses: all 12 training splits, all 12 development subsets.
+  X:
+    SpeakerDiarization:
+      TrainAllExt2:
+        train:
+          AMI.SpeakerDiarization.suplime: [train]
+          ICSI.SpeakerDiarization.suplime: [train]
+          VoxConverse.SpeakerDiarization.suplime: [train]
+          CHiME6.SpeakerDiarization.suplime: [train]
+          DiPCo.SpeakerDiarization.suplime: [train]
+          NOTSOFAR1.SpeakerDiarization.suplime: [train]
+          AISHELL4.SpeakerDiarization.suplime: [train]
+          AMI_SDM.SpeakerDiarization.suplime: [train]
+          AVA_AVD.SpeakerDiarization.suplime: [train]
+          AliMeeting.SpeakerDiarization.suplime: [train]
+          MSDWild.SpeakerDiarization.suplime: [train]
+          RAMC.SpeakerDiarization.suplime: [train]
+        development:
+          AMI.SpeakerDiarization.suplime: [development]
+          ICSI.SpeakerDiarization.suplime: [development]
+          VoxConverse.SpeakerDiarization.suplime: [development]
+          CHiME6.SpeakerDiarization.suplime: [development]
+          DiPCo.SpeakerDiarization.suplime: [development]
+          NOTSOFAR1.SpeakerDiarization.suplime: [development]
+          AISHELL4.SpeakerDiarization.suplime: [development]
+          AMI_SDM.SpeakerDiarization.suplime: [development]
+          AVA_AVD.SpeakerDiarization.suplime: [development]
+          AliMeeting.SpeakerDiarization.suplime: [development]
+          MSDWild.SpeakerDiarization.suplime: [development]
+          RAMC.SpeakerDiarization.suplime: [development]

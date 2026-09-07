@@ -1,0 +1,26 @@
+# SUPlime speaker diarization pipeline — https://github.com/rewayai/suplime
+# Load with `pip install suplime` and `Pipeline.from_pretrained("rewayai/suplime")`.
+# Weights: CC BY-NC 4.0 (see LICENSE). Numbers in README.md were produced with
+# exactly these hyper-parameters.
+
+dependencies:
+  pyannote.audio: 4.0.7
+  suplime: 0.1.0
+
+pipeline:
+  name: suplime.SuplimeDiarization
+  params:
+    segmentation: $model/segmentation
+    embedding: $model/embedding
+    clustering: AgglomerativeClustering
+    embedding_exclude_overlap: true
+    embedding_batch_size: 32
+    segmentation_batch_size: 32
+
+params:
+  segmentation:
+    min_duration_off: 0.0
+  clustering:
+    method: centroid
+    min_cluster_size: 12
+    threshold: 0.72

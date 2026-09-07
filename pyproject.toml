@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "suplime"
+version = "0.1.0"
+description = "Suplime speaker diarization: WavLM-Base+ / Conformer segmentation + SimAM-ResNet34 embeddings, loadable through pyannote.audio 4.x"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "LICENSE.WeSpeaker"]
+authors = [{ name = "Re:WayAI", email = "jan@reway.cz" }]
+keywords = ["speaker-diarization", "pyannote", "wavlm", "conformer", "wespeaker"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = ["pyannote.audio>=4.0.7,<5"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+hub = ["huggingface_hub"]
+train = ["tensorboard", "wandb"]   # optional loggers; training itself needs only pyannote.audio
+
+[project.scripts]
+suplime-train = "suplime.train:main"
+suplime-soup = "suplime.soup:main"
+
+[project.urls]
+Homepage = "https://github.com/rewayai/suplime"
+Model = "https://huggingface.co/rewayai/suplime"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/suplime"]
