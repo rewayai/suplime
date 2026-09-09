@@ -4,7 +4,7 @@
     python tools/results_figure.py            # after editing the README tables
 
 Two panels of horizontal bars (lower DER is better): pyannote's 8-corpus benchmark
-(four systems) and the full 12-corpus set (the two systems evaluated on it).
+(five systems) and the full 12-corpus set (the four systems evaluated on it).
 """
 import re
 from pathlib import Path
@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 R = Path(__file__).resolve().parents[1]
-SYSTEMS = ["SUPlime", "DiariZen-L-s80-v2", "pyannoteAI precision-2", "pyannote community-1"]
+SYSTEMS = ["SUPlime", "SUPlime-L", "DiariZen-L-s80-v2", "pyannoteAI precision-2", "pyannote community-1"]
+OURS = ("SUPlime", "SUPlime-L")
 
 
 def read_macros(readme: Path):
@@ -29,14 +30,14 @@ def read_macros(readme: Path):
 
 
 THEMES = {
-    "light": dict(surface="#ffffff", text="#0b0b0b", text2="#52514e", muted="#898781", accent="#4f8f08", other="#a3a19a"),
-    "dark": dict(surface="#0d1117", text="#ffffff", text2="#c3c2b7", muted="#8b949e", accent="#8fd130", other="#7a7975"),
+    "light": dict(surface="#ffffff", text="#0b0b0b", text2="#52514e", muted="#898781", accent="#4f8f08", accent2="#8ec63f", other="#a3a19a"),
+    "dark": dict(surface="#0d1117", text="#ffffff", text2="#c3c2b7", muted="#8b949e", accent="#8fd130", accent2="#5f9c17", other="#7a7975"),
 }
 
 
 def panel(ax, title, values, t, xmax, slots, fig):
-    # SUPlime first, then the others best (lowest) first
-    order = ["SUPlime"] + sorted((k for k in values if k != "SUPlime"), key=values.get)
+    # our models first, then the others best (lowest) first
+    order = [k for k in OURS if k in values] + sorted((k for k in values if k not in OURS), key=values.get)
     best = min(values, key=values.get)
     ax.set_facecolor(t["surface"])
     for spine in ax.spines.values():
@@ -58,7 +59,7 @@ def panel(ax, title, values, t, xmax, slots, fig):
     r = 4 * x_per_px
     for i, name in enumerate(order):
         v = values[name]
-        color = t["accent"] if name == "SUPlime" else t["other"]
+        color = {"SUPlime": t["accent"], "SUPlime-L": t["accent2"]}.get(name, t["other"])
         ax.add_patch(FancyBboxPatch((0, i - h / 2), v, h, boxstyle=f"round,pad=0,rounding_size={r}",
                                     mutation_aspect=y_per_px / x_per_px, linewidth=0, facecolor=color))
         ax.add_patch(Rectangle((0, i - h / 2), min(2 * r, v), h, linewidth=0, facecolor=color))  # square baseline end

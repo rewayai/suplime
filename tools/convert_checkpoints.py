@@ -52,10 +52,15 @@ def convert_segmentation(src: Path, dst: Path) -> None:
     print(f"[seg] source architecture {arch['module']}.{arch['class']}, hparams keys {sorted(hp)}")
 
     wav2vec = hp["wav2vec"]
+    normalize = bool(hp.get("normalize_waveform", False))
     if isinstance(wav2vec, str):
         bundle = getattr(torchaudio.pipelines, wav2vec)
+        # the *_LARGE bundles wrap the backbone in a waveform-normalising module, so their
+        # checkpoints carry `wav2vec.model.*`; suplime rebuilds that wrapper from this flag
+        normalize = bool(getattr(bundle, "_normalize_waveform", False))
         wav2vec = dict(bundle._params)
-        print(f"[seg] inlined torchaudio.pipelines.{hp['wav2vec']} config ({len(wav2vec)} keys)")
+        print(f"[seg] inlined torchaudio.pipelines.{hp['wav2vec']} config ({len(wav2vec)} keys), "
+              f"normalize_waveform={normalize}")
     assert hp.get("conformer") is not None, "only Conformer-head checkpoints are supported"
     assert hp.get("mamba") is None
 
@@ -64,6 +69,7 @@ def convert_segmentation(src: Path, dst: Path) -> None:
         "wav2vec_layer": hp["wav2vec_layer"],
         "conformer": dict(hp["conformer"]),
         "linear": dict(hp["linear"]),
+        "normalize_waveform": normalize,
         "sample_rate": hp.get("sample_rate", 16000),
         "num_channels": hp.get("num_channels", 1),
     }

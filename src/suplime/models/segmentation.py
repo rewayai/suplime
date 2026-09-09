@@ -49,6 +49,30 @@ from pyannote.audio.utils.receptive_field import (
 )
 
 
+class _NormalizedWav2Vec2(nn.Module):
+    """torchaudio's large-bundle wrapper, reimplemented so suplime does not depend on a private
+    torchaudio class (``pipelines._wav2vec2.utils._Wav2Vec2Model``).
+
+    The ``*_LARGE`` bundles set ``_normalize_waveform=True``: ``bundle.get_model()`` returns the
+    backbone inside a wrapper that layer-normalises the waveform before the encoder and holds the
+    backbone under ``.model``. Checkpoints trained that way store ``wav2vec.model.*``, and dropping
+    the normalisation would silently feed the encoder a different input distribution from the one
+    it was trained on. WAVLM_BASE_PLUS has the flag off, so its checkpoints are unwrapped.
+    """
+
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def extract_features(self, waveforms, lengths=None, num_layers=None):
+        waveforms = F.layer_norm(waveforms, waveforms.shape)
+        return self.model.extract_features(waveforms, lengths, num_layers)
+
+    def forward(self, waveforms, lengths=None):
+        waveforms = F.layer_norm(waveforms, waveforms.shape)
+        return self.model(waveforms, lengths)
+
+
 class SuplimeSegmentation(Model):
     """WavLM (learned layer mixture) > Conformer > linear > classifier.
 
@@ -85,6 +109,7 @@ class SuplimeSegmentation(Model):
         wav2vec_layer: int = -1,
         conformer: Optional[dict] = None,
         linear: Optional[dict] = None,
+        normalize_waveform: bool = False,
         sample_rate: int = 16000,
         num_channels: int = 1,
         task: Optional[Task] = None,
@@ -102,9 +127,12 @@ class SuplimeSegmentation(Model):
         # torchaudio's wavlm_model factory understands (this is what the WAVLM_*
         # bundles' get_model() calls); plain wav2vec2/HuBERT configs do not.
         if "encoder_max_distance" in wav2vec:
-            self.wav2vec = torchaudio.models.wavlm_model(**wav2vec)
+            backbone = torchaudio.models.wavlm_model(**wav2vec)
         else:
-            self.wav2vec = torchaudio.models.wav2vec2_model(**wav2vec)
+            backbone = torchaudio.models.wav2vec2_model(**wav2vec)
+        # WavLM-Large was trained through torchaudio's normalising bundle wrapper; see
+        # _NormalizedWav2Vec2. The flag rides in the checkpoint's hyper-parameters.
+        self.wav2vec = _NormalizedWav2Vec2(backbone) if normalize_waveform else backbone
         wav2vec_dim = wav2vec["encoder_embed_dim"]
         wav2vec_num_layers = wav2vec["encoder_num_layers"]
 
@@ -115,7 +143,9 @@ class SuplimeSegmentation(Model):
 
         conformer = merge_dict(self.CONFORMER_DEFAULTS, conformer)
         linear = merge_dict(self.LINEAR_DEFAULTS, linear)
-        self.save_hyperparameters("wav2vec", "wav2vec_layer", "conformer", "linear")
+        self.save_hyperparameters(
+            "wav2vec", "wav2vec_layer", "conformer", "linear", "normalize_waveform"
+        )
 
         self.conformer = torchaudio.models.Conformer(
             input_dim=wav2vec_dim,
@@ -159,11 +189,17 @@ class SuplimeSegmentation(Model):
         self.classifier = nn.Linear(in_features, self.dimension)
         self.activation = self.default_activation()
 
+    @property
+    def _feature_extractor(self):
+        """The conv frontend, one level deeper when the backbone is wrapped for normalisation."""
+        w = self.wav2vec
+        return w.feature_extractor if hasattr(w, "feature_extractor") else w.model.feature_extractor
+
     @lru_cache
     def num_frames(self, num_samples: int) -> int:
         """Number of output frames for `num_samples` input samples."""
         num_frames = num_samples
-        for conv_layer in self.wav2vec.feature_extractor.conv_layers:
+        for conv_layer in self._feature_extractor.conv_layers:
             num_frames = conv1d_num_frames(
                 num_frames,
                 kernel_size=conv_layer.kernel_size,
@@ -175,7 +211,7 @@ class SuplimeSegmentation(Model):
 
     def receptive_field_size(self, num_frames: int = 1) -> int:
         receptive_field_size = num_frames
-        for conv_layer in reversed(self.wav2vec.feature_extractor.conv_layers):
+        for conv_layer in reversed(self._feature_extractor.conv_layers):
             receptive_field_size = conv1d_receptive_field_size(
                 num_frames=receptive_field_size,
                 kernel_size=conv_layer.kernel_size,
@@ -187,7 +223,7 @@ class SuplimeSegmentation(Model):
 
     def receptive_field_center(self, frame: int = 0) -> int:
         receptive_field_center = frame
-        for conv_layer in reversed(self.wav2vec.feature_extractor.conv_layers):
+        for conv_layer in reversed(self._feature_extractor.conv_layers):
             receptive_field_center = conv1d_receptive_field_center(
                 receptive_field_center,
                 kernel_size=conv_layer.kernel_size,

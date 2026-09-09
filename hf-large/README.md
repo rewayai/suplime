@@ -33,13 +33,19 @@ inference: false
 
 <p align="center"><img src="logo.png" alt="SUPlime" width="280"></p>
 
-# SUPlime — speaker diarization
+# SUPlime-L — speaker diarization (WavLM-Large)
 
 *SUP as in "what's up": who is speaking, and when.*
 
 Open-weights speaker diarization by [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x. One 16 kHz mono
 recording in, who-spoke-when out; no speaker count needed.
+
+This is the **WavLM-Large** variant of [SUPlime](https://huggingface.co/rewayai/suplime):
+same recipe, same embedding, same clustering, a 315 M-parameter backbone instead of 94 M.
+It is the better model on pyannote's 8-corpus benchmark — **15.85 macro DER, ahead of
+pyannoteAI's commercial `precision-2` (16.06)** — and the base model is better across all
+12 corpora. Pick by domain, not by size; see [Which variant](#which-variant).
 
 **Weights are released under CC BY-NC 4.0 (non-commercial)** because part of the
 training data is licensed for research use only, which rules out commercial use of
@@ -55,7 +61,7 @@ pip install suplime      # installs pyannote.audio>=4.0.7 and the model code
 import torch
 from pyannote.audio import Pipeline
 
-pipeline = Pipeline.from_pretrained("rewayai/suplime").to(torch.device("cuda"))
+pipeline = Pipeline.from_pretrained("rewayai/suplime-large").to(torch.device("cuda"))
 output = pipeline("meeting.wav")
 for turn, _, speaker in output.speaker_diarization.itertracks(yield_label=True):
     print(f"{turn.start:.2f} {turn.end:.2f} {speaker}")
@@ -80,7 +86,7 @@ during inference — all numbers below were produced with the default).
 
 | Stage | Model | Details |
 |---|---|---|
-| Segmentation | WavLM-Base+ → Conformer → powerset | 12 WavLM layers mixed with learned softmax weights; 4 Conformer layers (4 heads, FFN 256, depthwise kernel 31, dropout 0.1); 2 linear layers (128); powerset output over 4 speakers with ≤ 2 simultaneous (11 classes); 10 s windows, 20 ms frames, window step 1 s. 114 M parameters. |
+| Segmentation | WavLM-Large → Conformer → powerset | 24 WavLM layers mixed with learned softmax weights; 4 Conformer layers (4 heads, FFN 256, depthwise kernel 31, dropout 0.1); 2 linear layers (128); powerset output over 4 speakers with ≤ 2 simultaneous (11 classes); 10 s windows, 20 ms frames, window step 1 s. 349 M parameters. |
 | Embedding | WeSpeaker SimAM-ResNet34 + attentive statistics pooling | `voxblink2_samresnet34_ft` (VoxBlink2 pre-training, VoxCeleb2 fine-tuning), converted to a pyannote model; 256-dim, cosine metric; overlapping speech excluded from pooling. 25 M parameters. |
 | Clustering | Agglomerative, centroid linkage | threshold 0.72, `min_cluster_size` 12 (pyannote's standard AHC). |
 
@@ -89,16 +95,18 @@ splits of 11 public corpora — AMI (IHM and SDM), ICSI, VoxConverse, CHiME-6, D
 NOTSOFAR-1, AISHELL-4, AliMeeting, MSDWild, RAMC and AVA-AVD (4,187 files) — with
 in-batch speaker mixing, simulated-RIR reverberation and MUSAN noise; AdamW, lr 5e-5,
 weight decay 0.01, OneCycle schedule, gradient clipping 0.5, bf16 mixed precision,
-batch 32 × 10 s chunks, 60 epochs on a single GPU with early stopping (patience 10).
-The released weights are the average of the 5 best validation checkpoints. The complete recipe — training
-splits, augmentation data, one `suplime-train` command on stock pyannote.audio — is
-published in [`training/`](https://github.com/rewayai/suplime/tree/main/training) of the
-GitHub repository. Repository layout follows pyannote's conventions:
+10 s chunks. Training ran in two stages: 15 epochs at effective batch 32 on one GPU,
+then 20 epochs at effective batch 192 across 8 GPUs under a fresh OneCycle (same peak
+lr), with early stopping (patience 10). The released weights are the average of the
+5 best validation checkpoints. The recipe — training splits, augmentation data, one
+`suplime-train` command on stock pyannote.audio — is published in
+[`training/`](https://github.com/rewayai/suplime/tree/main/training) of the GitHub
+repository; pass `--wavlm WAVLM_LARGE` for this variant. Repository layout follows pyannote's conventions:
 `config.yaml` (pipeline), `segmentation/pytorch_model.bin`, `embedding/pytorch_model.bin`.
 
 ## Results
 
-<img src="results.png" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
+<img src="results.png" alt="Macro-average DER of SUPlime-L, SUPlime, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
 
 Diarization error rate (%, lower is better) under pyannote's benchmark conditions:
 **collar 0 s, overlapped speech scored, fully automatic** (no oracle speaker count),
@@ -110,36 +118,47 @@ their authors publish ([DiariZen](https://github.com/BUT-FIT/DiariZen),
 unchanged (default parameters) on the same files with the same scoring. For
 NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split.
 
-| Corpus (test unless noted) | **SUPlime** | **SUPlime-L** | DiariZen-L-s80-v2 | pyannoteAI precision-2 | pyannote community-1 |
+| Corpus (test unless noted) | **SUPlime-L** | SUPlime | DiariZen-L-s80-v2 | pyannoteAI precision-2 | pyannote community-1 |
 |---|--:|--:|--:|--:|--:|
-| AISHELL-4 | 11.55 | 11.21 | **10.1** | 11.4 | 11.7 |
-| AliMeeting (far, ch1) | 14.45 | 14.55 | **10.8** | 15.2 | 20.3 |
-| AMI (IHM, Mix-Headset) | **12.59** | 11.91 | 25.69 † | 12.9 | 17.0 |
-| AMI (SDM) | 15.14 | 14.84 | **13.9** | 15.6 | 19.9 |
-| AVA-AVD | 38.09 | 36.78 | 42.62 † | **37.1** | 44.6 |
-| MSDWild (few.val) | 17.81 | 17.48 | **15.8** | 17.3 | 22.8 |
-| RAMC | 10.86 | 11.10 | 11.0 | **10.5** | 20.8 |
-| VoxConverse (v0.3) | 9.21 | 8.93 | 9.1 | **8.5** | 11.2 |
-| **macro average (8)** | **16.21** | **15.85** | 17.38 | 16.06 | 21.04 |
-| NOTSOFAR-1 (80-session split) | 20.04 | 22.68 | **18.86 †** | — | 27.67 † |
-| ICSI | **22.97** | 22.77 | 26.54 † | — | 30.84 † |
-| CHiME-6 | **48.11** | 48.88 | 48.39 † | — | 51.98 † |
-| DiPCo | **30.44** | 30.92 | 37.56 † | — | 34.38 † |
-| **macro average (12)** | **20.94** | 21.00 | 22.53 | — | 26.10 |
+| AISHELL-4 | 11.21 | 11.55 | **10.1** | 11.4 | 11.7 |
+| AliMeeting (far, ch1) | 14.55 | 14.45 | **10.8** | 15.2 | 20.3 |
+| AMI (IHM, Mix-Headset) | 11.91 | **12.59** | 25.69 † | 12.9 | 17.0 |
+| AMI (SDM) | 14.84 | 15.14 | **13.9** | 15.6 | 19.9 |
+| AVA-AVD | 36.78 | 38.09 | 42.62 † | **37.1** | 44.6 |
+| MSDWild (few.val) | 17.48 | 17.81 | **15.8** | 17.3 | 22.8 |
+| RAMC | 11.10 | 10.86 | 11.0 | **10.5** | 20.8 |
+| VoxConverse (v0.3) | 8.93 | 9.21 | 9.1 | **8.5** | 11.2 |
+| **macro average (8)** | **15.85** | 16.21 | 17.38 | 16.06 | 21.04 |
+| NOTSOFAR-1 (80-session split) | 22.68 | 20.04 | **18.86 †** | — | 27.67 † |
+| ICSI | 22.77 | **22.97** | 26.54 † | — | 30.84 † |
+| CHiME-6 | 48.88 | **48.11** | 48.39 † | — | 51.98 † |
+| DiPCo | 30.92 | **30.44** | 37.56 † | — | 34.38 † |
+| **macro average (12)** | **21.00** | **20.94** | 22.53 | — | 26.10 |
 
-Reading the table: on the full 12-corpus set SUPlime is ahead of DiariZen-L-s80-v2
-(a WavLM-Large system with roughly 3× the segmentation compute) on 6 of 12 corpora
-and by 1.6 DER absolute on the macro average, with the largest margins on close-talk
-AMI-IHM and on the CHiME-6 / DiPCo dinner-party recordings; DiariZen is clearly
-better on the Mandarin meeting corpora (AISHELL-4, AliMeeting), AMI-SDM and MSDWild.
-On pyannote's 8-corpus benchmark SUPlime is on par with pyannoteAI's commercial
-`precision-2` (16.21 vs 16.06) and far ahead of the open `community-1`.
-**SUPlime-L**, the WavLM-Large variant, is the stronger model on the 8-corpus
-benchmark (15.85 macro DER, ahead of `precision-2`'s 16.06) and slightly behind this
-one across all 12 corpora (21.00 vs 20.94), at roughly 3× the inference cost:
-[rewayai/suplime-large](https://huggingface.co/rewayai/suplime-large).
-
+Reading the table: on pyannote's 8-corpus benchmark SUPlime-L is the strongest system
+here — 15.85 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06), the base
+SUPlime (16.21) and DiariZen-L-s80-v2 (17.38) — winning 5 of the 8 rows. Across all 12
+corpora the ranking flips: 21.00 against 20.94 for the base model, because the four extra
+sets are far-field and dinner-party recordings where the larger backbone does not help and
+NOTSOFAR-1 costs it 2.6 DER. DiariZen is still clearly better on the Mandarin meeting
+corpora (AISHELL-4, AliMeeting) and MSDWild.
 The per-corpus hypothesis RTTMs are in [`reproducible_research/`](reproducible_research/).
+
+## Which variant
+
+| | [SUPlime](https://huggingface.co/rewayai/suplime) | **SUPlime-L** (this model) |
+|---|--:|--:|
+| Backbone | WavLM-Base+ | WavLM-Large |
+| Parameters (segmentation) | 114 M | 349 M |
+| macro DER, 8-corpus benchmark | 16.21 | **15.85** |
+| macro DER, all 12 corpora | **20.94** | 21.00 |
+| Relative inference cost | 1× | ≈ 3× |
+
+Take SUPlime-L for meeting and conversational audio of the kind the benchmark covers, and
+when accuracy matters more than throughput. Take the base model for far-field and
+dinner-party audio (CHiME-6, DiPCo, NOTSOFAR-1), for CPU or edge deployment, or when you
+want the cheaper model that is within 0.4 DER of it almost everywhere. Both share the
+embedding, the clustering and the operating threshold, so switching is a one-line change.
 
 ## Limitations
 
@@ -148,6 +167,8 @@ The per-corpus hypothesis RTTMs are in [`reproducible_research/`](reproducible_r
   AMI-IHM and VoxConverse prefer 0.78–0.84. Tune on your own data. A DER-optimal
   threshold tends to over-merge speakers; if your downstream metric is
   speaker-attributed WER, a slightly higher threshold is usually better.
+- Roughly 3× the segmentation compute and memory of the base model for 0.36 DER on the
+  8-corpus benchmark, and it is *behind* the base model on the 12-corpus macro average.
 - The powerset head models at most 2 simultaneous speakers per frame and 4 speakers
   per 10 s window; recordings with heavy 3-way overlap are under-served.
 - Trained on 16 kHz meeting / conversational / broadcast / movie audio; telephone
@@ -181,11 +202,11 @@ Conformer segmentation design is in the spirit of
 ## Citation
 
 ```bibtex
-@misc{suplime2026,
-  title  = {SUPlime: open-weights speaker diarization for pyannote.audio},
+@misc{suplimel2026,
+  title  = {SUPlime-L: open-weights speaker diarization for pyannote.audio},
   author = {Re:WayAI},
   year   = {2026},
-  url    = {https://huggingface.co/rewayai/suplime}
+  url    = {https://huggingface.co/rewayai/suplime-large}
 }
 ```
 

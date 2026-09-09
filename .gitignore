@@ -13,3 +13,9 @@ build/
 .pytest_cache/
 results/
 results_community1/
+
+# large variant: weights and per-corpus outputs live on the Hub
+hf-large/segmentation/
+hf-large/embedding/
+hf-large/reproducible_research/
+results_large/
