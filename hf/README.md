@@ -41,6 +41,11 @@ Open-weights speaker diarization by [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x. One 16 kHz mono
 recording in, who-spoke-when out; no speaker count needed.
 
+There is also a WavLM-Large variant,
+[SUPlime-L](https://huggingface.co/rewayai/suplime-large): better on pyannote's
+8-corpus benchmark (15.85 vs 16.21 macro DER), marginally worse across all 12
+corpora, and about 3× the inference cost.
+
 **Weights are released under CC BY-NC 4.0 (non-commercial)** because part of the
 training data is licensed for research use only, which rules out commercial use of
 models derived from it — see [LICENSE](LICENSE) and the rationale below.

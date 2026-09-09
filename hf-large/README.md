@@ -162,11 +162,13 @@ embedding, the clustering and the operating threshold, so switching is a one-lin
 
 ## Limitations
 
-- **Threshold.** 0.72 is a DER-optimal compromise across corpora. AISHELL-4 and
-  AliMeeting prefer ≈ 0.68 and degrade sharply above 0.74 (AISHELL-4: 19.1 at 0.80);
-  AMI-IHM and VoxConverse prefer 0.78–0.84. Tune on your own data. A DER-optimal
-  threshold tends to over-merge speakers; if your downstream metric is
-  speaker-attributed WER, a slightly higher threshold is usually better.
+- **Threshold.** 0.72 is a DER-optimal compromise across corpora, and the spread around
+  it is wide for this model. AISHELL-4 and AliMeeting want 0.68 (10.57 and 13.61) and
+  collapse above 0.74 (AISHELL-4: 20.8 at 0.80); CHiME-6, AMI-SDM and VoxConverse want
+  0.80, and CHiME-6 alone gains 5.7 DER there (49.14 → 43.44). Tune on your own data —
+  on this model it is worth more than on the base one. A DER-optimal threshold tends to
+  over-merge speakers; if your downstream metric is speaker-attributed WER, a slightly
+  higher threshold is usually better.
 - Roughly 3× the segmentation compute and memory of the base model for 0.36 DER on the
   8-corpus benchmark, and it is *behind* the base model on the 12-corpus macro average.
 - The powerset head models at most 2 simultaneous speakers per frame and 4 speakers

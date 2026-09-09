@@ -104,6 +104,27 @@ on 48 GB), `--devices N` for DDP (batch is per device; keep the product at 32 to
 on-recipe), `--init-ckpt` to warm-start weights, `--cache` to reuse a prepared task
 cache between runs, `--fast-dev 5` for a smoke test.
 
+### SUPlime-L (WavLM-Large)
+
+[SUPlime-L](https://huggingface.co/rewayai/suplime-large) is the same recipe with a
+WavLM-Large backbone, trained in two stages because the large model keeps improving
+past the point where the single-GPU batch becomes the bottleneck:
+
+```bash
+# stage 1: 15 epochs, effective batch 32, one GPU
+suplime-train --out runs/suplime-l --database training/database.yml --aug-root aug_data \
+    --wavlm WAVLM_LARGE --batch-size 8 --accumulate-grad-batches 4 --max-epochs 15
+# stage 2: 20 epochs, effective batch 192, eight GPUs, fresh OneCycle at the same peak lr
+suplime-train --out runs/suplime-l-b192 --database training/database.yml --aug-root aug_data \
+    --wavlm WAVLM_LARGE --devices 8 --batch-size 12 --accumulate-grad-batches 2 \
+    --max-epochs 20 --init-ckpt runs/suplime-l/checkpoints/last.ckpt
+suplime-soup runs/suplime-l-b192/checkpoints -k 5 -o suplime_l_avg5.ckpt
+```
+
+Roughly 3× the compute of the base recipe per epoch. On 40 GB cards batch 12 per rank
+fits; on 80 GB use `--batch-size 24 --accumulate-grad-batches 1` for the same
+effective batch and fewer all-reduces.
+
 ## 3. Soup, convert, evaluate
 
 ```bash
