@@ -33,6 +33,22 @@ are CC BY-NC 4.0 (non-commercial) — see [License](#license).
 pip install suplime            # pulls pyannote.audio>=4.0.7,<5
 ```
 
+`pip install` does not bring FFmpeg, and pyannote.audio reads audio **files** through
+torchcodec, which loads FFmpeg's shared libraries at runtime — without them the first call
+raises `RuntimeError: Could not load libtorchcodec`. Install it into the same environment:
+
+```bash
+micromamba install -c conda-forge ffmpeg     # or conda/mamba; on Linux also apt install ffmpeg
+```
+
+Passing a waveform instead of a path needs no decoder at all:
+
+```python
+import soundfile as sf, torch
+x, sr = sf.read("meeting.wav", dtype="float32", always_2d=True)
+output = pipeline({"waveform": torch.from_numpy(x.T), "sample_rate": sr})   # (channel, time)
+```
+
 ## Use
 
 ```python
