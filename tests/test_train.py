@@ -77,7 +77,7 @@ def _argv(out: Path, corpus: Path, *extra):
 
 @pytest.fixture(autouse=True)
 def tiny_wavlm(monkeypatch):
-    monkeypatch.setattr(train, "load_wavlm", lambda name: (_tiny_wavlm(), None))
+    monkeypatch.setattr(train, "load_wavlm", lambda name: (_tiny_wavlm(), None, False))
 
 
 def test_fast_dev_runs_two_batches(tmp_path, corpus):
@@ -119,6 +119,43 @@ def test_train_checkpoints_soup_and_reload(tmp_path, corpus):
     with torch.inference_mode():
         scores = model(torch.zeros(1, 1, 5 * SR))
     assert scores.shape[0] == 1 and scores.shape[2] == model.specifications.num_powerset_classes
+
+
+def test_build_model_wraps_the_backbone_when_the_bundle_normalises(tmp_path, corpus):
+    """The *_LARGE bundles hand back a normalising wrapper, so build_model has to be told:
+    without the flag the model is built unwrapped and the strict load of the bundle weights
+    fails (`wav2vec.model.*` against `wav2vec.*`). Regression for the WAVLM_LARGE recipe."""
+    args = train.parse_args(_argv(tmp_path / "run", corpus))
+    cfg = _tiny_wavlm()
+    cfg["encoder_max_distance"] = 800  # what makes it a WavLM rather than a wav2vec2 config
+
+    plain = train.build_model(args, None, cfg)
+    wrapped = train.build_model(args, None, cfg, normalize_waveform=True)
+    assert not hasattr(plain.wav2vec, "model")
+    assert wrapped.hparams.normalize_waveform is True
+    assert any(k.startswith("wav2vec.model.") for k in wrapped.state_dict())
+
+    # the wrapped model accepts exactly the state_dict a normalising bundle produces
+    nested = {f"model.{k}": v for k, v in plain.wav2vec.state_dict().items()}
+    wrapped.wav2vec.load_state_dict(nested, strict=True)
+    with pytest.raises(RuntimeError):
+        plain.wav2vec.load_state_dict(nested, strict=True)
+
+
+LARGE_CACHED = Path(torch.hub.get_dir()) / "checkpoints" / "wavlm_large.pth"
+
+
+@pytest.mark.skipif(not LARGE_CACHED.exists(), reason="WAVLM_LARGE not in the torch hub cache")
+def test_wavlm_large_bundle_loads_into_the_model_it_builds(tmp_path, corpus, monkeypatch):
+    """End to end on the real bundle (1.2 GB, cache only): load_wavlm reports the flag and the
+    weights load strictly into the model build_model makes from it."""
+    monkeypatch.undo()  # this one wants the real load_wavlm, not the tiny stub
+    cfg, state, normalize = train.load_wavlm("WAVLM_LARGE")
+    assert normalize is True
+    assert next(iter(state)).startswith("model.")
+    args = train.parse_args(_argv(tmp_path / "run", corpus))
+    model = train.build_model(args, None, cfg, state, normalize)
+    assert model.hparams.wav2vec["encoder_embed_dim"] == 1024
 
 
 def test_soup_averages_float_tensors(tmp_path):

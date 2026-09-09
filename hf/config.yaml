@@ -3,6 +3,10 @@
 # Weights: CC BY-NC 4.0 (see LICENSE). Numbers in README.md were produced with
 # exactly these hyper-parameters.
 
+# `suplime` below is the MINIMUM version that can load this model, not the current
+# release: nothing this checkpoint needs changed after 0.1.0. The Large variant declares
+# 0.2.0 because its waveform-normalising wrapper only exists from that version on.
+# pyannote compares major versions only, so both load under any 0.x.
 dependencies:
   pyannote.audio: 4.0.7
   suplime: 0.1.0

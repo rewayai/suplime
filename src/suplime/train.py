@@ -106,9 +106,20 @@ def parse_args(argv=None):
 
 
 def load_wavlm(name: str):
-    """(config dict, pretrained state_dict) of a torchaudio WavLM bundle."""
+    """(config dict, pretrained state_dict, normalize_waveform) of a torchaudio WavLM bundle.
+
+    The ``*_LARGE`` bundles set ``_normalize_waveform``: ``get_model()`` returns the backbone
+    inside a wrapper that layer-normalises the waveform, so its state_dict is nested under
+    ``model.`` and the segmentation model has to be built with the same wrapper. Forgetting the
+    flag makes the strict load below fail outright — see ``_NormalizedWav2Vec2``.
+    """
     bundle = getattr(torchaudio.pipelines, name)
-    return dict(bundle._params), bundle.get_model().state_dict()
+    for attr in ("_params", "get_model"):
+        if not hasattr(bundle, attr):
+            raise TypeError(f"torchaudio.pipelines.{name} has no {attr}; this torchaudio "
+                            f"({torchaudio.__version__}) is not one suplime was tested against")
+    return (dict(bundle._params), bundle.get_model().state_dict(),
+            bool(getattr(bundle, "_normalize_waveform", False)))
 
 
 def build_task(args, augmentation=None):
@@ -129,10 +140,11 @@ def build_task(args, augmentation=None):
     )
 
 
-def build_model(args, task, wav2vec: dict, wav2vec_state=None):
+def build_model(args, task, wav2vec: dict, wav2vec_state=None, normalize_waveform: bool = False):
     model = SuplimeSegmentation(
         wav2vec=wav2vec,
         wav2vec_layer=args.wavlm_layer,
+        normalize_waveform=normalize_waveform,
         conformer={"num_heads": args.conformer_heads, "ffn_dim": args.conformer_ffn,
                    "num_layers": args.conformer_layers, "depthwise_conv_kernel_size": 31,
                    "dropout": args.conformer_dropout},
@@ -154,7 +166,11 @@ def build_model(args, task, wav2vec: dict, wav2vec_state=None):
 
 
 class _WarmStart(Callback):
-    """Load weights (only) from another checkpoint once the classifier exists."""
+    """Load weights (only) from another checkpoint once the classifier exists.
+
+    ``--init-ckpt`` and ``last.ckpt`` resume both unpickle (``weights_only=False``): a
+    checkpoint can execute code on load, so point them only at checkpoints you trust.
+    """
 
     def __init__(self, path):
         self.path = path
@@ -231,8 +247,8 @@ def run(args):
         augmentation = RamAugment(args.aug_root, max_speakers=args.max_spk_chunk, n_rirs=args.n_rirs,
                                   seed=args.seed)
     task = build_task(args, augmentation)
-    wav2vec, state = load_wavlm(args.wavlm)
-    model = build_model(args, task, wav2vec, state)
+    wav2vec, state, normalize = load_wavlm(args.wavlm)
+    model = build_model(args, task, wav2vec, state, normalize)
     trainer = build_trainer(args, task, work_dir)
 
     resume = None

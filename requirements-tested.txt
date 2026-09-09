@@ -1,0 +1,27 @@
+# The exact versions every published SUPlime number was produced with, and the versions CI
+# installs. `pip install suplime` deliberately does not pin these — it accepts any
+# pyannote.audio 4.x — but checkpoint compatibility is not a promise across arbitrary
+# torch/torchaudio releases:
+#
+#   * the segmentation model is rebuilt from a torchaudio bundle *config*
+#     (`torchaudio.pipelines.WAVLM_*._params`) and its state_dict has to match the module
+#     layout `torchaudio.models.wavlm_model()` produces in the installed version;
+#   * `_params` and `_normalize_waveform` are private torchaudio attributes. suplime raises
+#     a clear TypeError if they disappear (see suplime.train.load_wavlm and
+#     tools/convert_checkpoints.py) rather than silently building the wrong model.
+#
+# If you need to reproduce a published number exactly, install from this file.
+#
+#   pip install -r requirements-tested.txt && pip install -e .
+
+torch==2.14.0
+torchaudio==2.11.0
+pyannote.audio==4.0.7
+pyannote.core==6.0.1
+pyannote.database==6.1.1
+pyannote.metrics==4.1
+lightning==2.6.5
+huggingface-hub==1.30.0
+numpy==2.5.2
+scipy==1.18.1
+torch-audiomentations==0.12.0

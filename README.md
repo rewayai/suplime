@@ -147,7 +147,23 @@ pytest                          # checkpoint tests skip unless hf/ holds the con
 python tools/convert_checkpoints.py --segmentation <ckpt> --embedding <ckpt> --out hf
 python tools/upload_hf.py --repo rewayai/suplime
 python tools/upload_hf.py --repo rewayai/suplime-large --dir hf-large
+python tools/release_check.py --repo rewayai/suplime        # release gate, see below
 ```
+
+`pytest` on a clean clone says nothing about the published artifacts: the weights are not
+in git, so every checkpoint test skips. **`tools/release_check.py` is the gate** — it
+downloads a Hub repo, loads the pipeline the way the model card tells users to, and checks
+the hyper-parameters, the powerset output and one inference run, all with
+`HF_HUB_OFFLINE=1`. Run it against both repos after every upload; add
+`--audio <recording>` to also assert that real speech comes back diarized. CI
+(`.github/workflows/tests.yml`) runs the unit tests on every push and the release gate on
+demand.
+
+`pip install suplime` accepts any pyannote.audio 4.x, but the published numbers and the
+checkpoint layouts were produced with one exact stack — `requirements-tested.txt`. Install
+from it to reproduce a number exactly. The segmentation model is rebuilt from a torchaudio
+bundle config, so `torch`/`torchaudio` upgrades are the drift to watch; suplime fails loudly
+rather than silently if the bundle attributes it reads ever change shape.
 
 ## License
 

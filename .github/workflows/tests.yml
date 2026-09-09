@@ -1,0 +1,59 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_check:
+        description: "Also download the published Hub repos and run tools/release_check.py"
+        type: boolean
+        default: false
+
+jobs:
+  # Code-only: a clean checkout has no weights (hf/ and hf-large/ payloads are git-ignored),
+  # so the checkpoint tests skip here by design. This job catches what they cannot — the
+  # model-building, training and pipeline wiring, on the exact versions we ship against.
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install pinned CPU torch
+        run: |
+          pip install --upgrade pip
+          pip install torch==2.14.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install the tested dependency set
+        run: |
+          pip install -r requirements-tested.txt
+          pip install -e ".[test,hub]"
+      - name: Show what we are testing against
+        run: python -c "import torch, torchaudio, pyannote.audio as p; print(torch.__version__, torchaudio.__version__, p.__version__)"
+      - run: pytest -q -rs
+
+  # The gate the unit tests cannot be: fetch what users actually download and run it.
+  # Manual, because the repos are private until release and this needs a Hub token.
+  release-check:
+    if: github.event_name == 'workflow_dispatch' && inputs.release_check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          pip install --upgrade pip
+          pip install torch==2.14.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-tested.txt
+          pip install -e ".[test,hub]"
+      - name: Check both published pipelines
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python tools/release_check.py --repo rewayai/suplime --device cpu
+          python tools/release_check.py --repo rewayai/suplime-large --device cpu

@@ -57,7 +57,12 @@ def best_checkpoints(ckpt_dir: Path, k: int) -> List[Path]:
 
 
 def average_checkpoints(paths: Sequence[Path], out: Path) -> dict:
-    """Average ``paths`` into ``out``; returns the written checkpoint dict."""
+    """Average ``paths`` into ``out``; returns the written checkpoint dict.
+
+    Lightning checkpoints are pickles and are read with ``weights_only=False`` (they carry
+    hyper-parameters and the architecture pointer, not just tensors), so loading one runs
+    whatever it was built to run: only pass checkpoints you produced or otherwise trust.
+    """
     paths = [Path(p) for p in paths]
     template = torch.load(paths[0], map_location="cpu", weights_only=False)
     sds = [template["state_dict"]] + [

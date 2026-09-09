@@ -19,6 +19,15 @@ fail against the fork's 0.1.devNNNN version string).
 Run under the *suplime* environment (plain pyannote.audio, no fork): loading the
 originals needs nothing fork-specific, and the strict reload at the end proves
 the published files work without it.
+
+The version stamped into each checkpoint is the *current* suplime version, which is
+therefore the minimum a consumer needs. Re-converting an unchanged model only to raise
+that floor would invalidate published checksums for no gain, so hf/ keeps the 0.1.0 stamp
+it was converted with while hf-large/ carries 0.2.0 (the release that added the
+normalising wrapper its weights require).
+
+SECURITY: torch.load(..., weights_only=False) below unpickles the checkpoint, which can
+execute arbitrary code. Only ever run this on checkpoints you produced or otherwise trust.
 """
 import argparse
 import hashlib
@@ -55,6 +64,10 @@ def convert_segmentation(src: Path, dst: Path) -> None:
     normalize = bool(hp.get("normalize_waveform", False))
     if isinstance(wav2vec, str):
         bundle = getattr(torchaudio.pipelines, wav2vec)
+        if not hasattr(bundle, "_params"):
+            raise SystemExit(f"torchaudio.pipelines.{wav2vec} has no _params; this torchaudio "
+                             f"({torchaudio.__version__}) is not one suplime was tested against "
+                             f"(see requirements-tested.txt)")
         # the *_LARGE bundles wrap the backbone in a waveform-normalising module, so their
         # checkpoints carry `wav2vec.model.*`; suplime rebuilds that wrapper from this flag
         normalize = bool(getattr(bundle, "_normalize_waveform", False))
