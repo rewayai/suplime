@@ -36,8 +36,8 @@ THEMES = {
 
 
 def panel(ax, title, values, t, xmax, slots, fig):
-    # our models first, then the others best (lowest) first
-    order = [k for k in OURS if k in values] + sorted((k for k in values if k not in OURS), key=values.get)
+    # ranked: best (lowest DER) first, whoever it is
+    order = sorted(values, key=values.get)
     best = min(values, key=values.get)
     ax.set_facecolor(t["surface"])
     for spine in ax.spines.values():
