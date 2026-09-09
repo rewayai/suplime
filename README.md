@@ -6,22 +6,26 @@
 
 The most accurate open-weights speaker diarization we know of, on both public suites:
 **15.85 macro DER on pyannote's 8-corpus benchmark** — ahead of pyannoteAI's commercial
-`precision-2` (16.06) — and **20.94 across all 12 corpora**. Two models on one recipe,
-from the research team at [Re:WayAI](https://rewayai.ai), packaged for
+`precision-2` (16.06) — and **20.94 across all 12 corpora**. From the research team at
+[Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x.
 
-| | [SUPlime](https://huggingface.co/rewayai/suplime) | [SUPlime-L](https://huggingface.co/rewayai/suplime-large) |
-|---|--:|--:|
-| Backbone | WavLM-Base+, 114 M params | WavLM-Large, 349 M params |
-| macro DER, 8-corpus benchmark | 16.21 | **15.85** |
-| macro DER, all 12 corpora | **20.94** | 21.00 |
-| Relative inference cost | 1× | ≈ 3× |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/results_dark.svg">
+  <img src="assets/results.svg" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
+</picture>
 
-SUPlime-L is the better model on meeting and conversational audio; the base model wins on
-far-field and dinner-party recordings (CHiME-6, DiPCo, NOTSOFAR-1) and costs a third as
-much to run. Both live on the Hugging Face Hub with a full model card; this package is the
-code those checkpoints point at, and without it pyannote.audio cannot instantiate them.
-Weights are CC BY-NC 4.0 (non-commercial) — see [License](#license).
+Two models on one recipe: [**SUPlime**](https://huggingface.co/rewayai/suplime) on a
+WavLM-Base+ backbone (114 M params) and
+[**SUPlime-L**](https://huggingface.co/rewayai/suplime-large) on WavLM-Large (349 M, ≈ 3×
+the inference cost). SUPlime-L is the better model on meeting and conversational audio;
+the base model wins on far-field and dinner-party recordings (CHiME-6, DiPCo, NOTSOFAR-1)
+and costs a third as much to run. Per-corpus numbers for all 12 corpora are in
+[Results](#results) below.
+
+Both model cards and the weights live on the Hugging Face Hub; this package is the code
+those checkpoints point at, and without it pyannote.audio cannot instantiate them. Weights
+are CC BY-NC 4.0 (non-commercial) — see [License](#license).
 
 ## Install
 
@@ -72,11 +76,6 @@ Set `SUPLIME_FP16=0` to run the WavLM backbone in fp32 (default: fp16 autocast
 on CUDA during inference — the published numbers were produced this way).
 
 ## Results
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/results_dark.svg">
-  <img src="assets/results.svg" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
-</picture>
 
 Diarization error rate (%), lower is better:
 
