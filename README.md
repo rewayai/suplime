@@ -4,27 +4,24 @@
 
 *SUP as in "what's up": who is speaking, and when.*
 
-Speaker diarization by research team at [Re:WayAI](https://rewayai.ai), packaged for
+The most accurate open-weights speaker diarization we know of, on both public suites:
+**15.85 macro DER on pyannote's 8-corpus benchmark** — ahead of pyannoteAI's commercial
+`precision-2` (16.06) — and **20.94 across all 12 corpora**. Two models on one recipe,
+from the research team at [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x.
 
-* **Segmentation**: WavLM-Base+ (learned 12-layer mixture) → 4-layer Conformer →
-  powerset classifier (4 speakers / 10 s window, up to 2 simultaneous). 114 M params.
-* **Embedding**: WeSpeaker SimAM-ResNet34 with attentive statistics pooling
-  (`voxblink2_samresnet34_ft`, 25 M params, 256-dim).
-* **Clustering**: agglomerative (centroid linkage), overlap excluded from embeddings.
+| | [SUPlime](https://huggingface.co/rewayai/suplime) | [SUPlime-L](https://huggingface.co/rewayai/suplime-large) |
+|---|--:|--:|
+| Backbone | WavLM-Base+, 114 M params | WavLM-Large, 349 M params |
+| macro DER, 8-corpus benchmark | 16.21 | **15.85** |
+| macro DER, all 12 corpora | **20.94** | 21.00 |
+| Relative inference cost | 1× | ≈ 3× |
 
-A second variant, **SUPlime-L**, keeps everything but swaps the backbone for
-WavLM-Large (349 M params, roughly 3× the segmentation compute). It is the better
-model on pyannote's 8-corpus benchmark (15.85 vs 16.21 macro DER) and marginally
-worse across all 12 corpora (21.00 vs 20.94):
-**https://huggingface.co/rewayai/suplime-large**.
-
-Model weights and the full model card live on the Hugging Face Hub:
-**https://huggingface.co/rewayai/suplime**. The weights are CC BY-NC 4.0
-(non-commercial) because part of the training data is licensed for research use
-only, which rules out commercial use of models derived from it. This package is
-the code those checkpoints point at; without it pyannote.audio cannot
-instantiate them.
+SUPlime-L is the better model on meeting and conversational audio; the base model wins on
+far-field and dinner-party recordings (CHiME-6, DiPCo, NOTSOFAR-1) and costs a third as
+much to run. Both live on the Hugging Face Hub with a full model card; this package is the
+code those checkpoints point at, and without it pyannote.audio cannot instantiate them.
+Weights are CC BY-NC 4.0 (non-commercial) — see [License](#license).
 
 ## Install
 
@@ -39,6 +36,8 @@ import torch
 from pyannote.audio import Pipeline
 
 pipeline = Pipeline.from_pretrained("rewayai/suplime").to(torch.device("cuda"))
+# the WavLM-Large variant is a drop-in replacement, same API and same threshold:
+# pipeline = Pipeline.from_pretrained("rewayai/suplime-large").to(torch.device("cuda"))
 output = pipeline("meeting.wav")
 for turn, _, speaker in output.speaker_diarization.itertracks(yield_label=True):
     print(f"{turn.start:.2f} {turn.end:.2f} {speaker}")
@@ -52,6 +51,10 @@ The same system without `config.yaml`:
 from suplime import SuplimeDiarization
 pipeline = SuplimeDiarization()                       # defaults = rewayai/suplime
 pipeline.instantiate(pipeline.default_parameters())   # threshold 0.72, min_cluster_size 12
+
+L = "rewayai/suplime-large"                           # the same, for SUPlime-L
+pipeline = SuplimeDiarization(segmentation={"checkpoint": L, "subfolder": "segmentation"},
+                              embedding={"checkpoint": L, "subfolder": "embedding"})
 ```
 
 Individual models load through the usual API:
@@ -61,6 +64,9 @@ from pyannote.audio import Model
 seg = Model.from_pretrained("rewayai/suplime", subfolder="segmentation")
 emb = Model.from_pretrained("rewayai/suplime", subfolder="embedding")
 ```
+
+Both repositories have the same layout, so every call above works with
+`rewayai/suplime-large`; the embedding model is byte-identical between them.
 
 Set `SUPLIME_FP16=0` to run the WavLM backbone in fp32 (default: fp16 autocast
 on CUDA during inference — the published numbers were produced this way).
@@ -72,13 +78,7 @@ on CUDA during inference — the published numbers were produced this way).
   <img src="assets/results.svg" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
 </picture>
 
-DER (%) with collar 0 s and overlapped speech scored, no oracle speaker count, **one threshold (0.72) for all corpora**. DiariZen-L-s80-v2 and the
-`community-1` / `precision-2` columns are the numbers their authors publish
-([DiariZen](https://github.com/BUT-FIT/DiariZen),
-[pyannote](https://huggingface.co/pyannote/speaker-diarization-community-1)).
-† not published by that system's authors: we ran their open-source pipeline
-unchanged (default parameters) on the same files with the same scoring. For
-NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split.
+Diarization error rate (%), lower is better:
 
 | Corpus (test unless noted) | **SUPlime** | **SUPlime-L** | DiariZen-L-s80-v2 | pyannoteAI precision-2 | pyannote community-1 |
 |---|--:|--:|--:|--:|--:|
@@ -107,6 +107,25 @@ the largest margins on close-talk AMI and on CHiME-6 / DiPCo; DiariZen stays
 clearly better on the Mandarin meeting corpora and MSDWild. Per-corpus hypothesis
 RTTMs are published with each model, see the model cards for threshold behaviour
 and known limitations.
+
+**Scoring conditions.** Collar 0 s, overlapped speech scored, no oracle speaker count,
+reference cropped to each corpus' UEM, and **one clustering threshold (0.72) for every
+corpus**. The DiariZen-L-s80-v2, `precision-2` and `community-1` columns are the numbers
+their authors publish ([DiariZen](https://github.com/BUT-FIT/DiariZen),
+[pyannote](https://huggingface.co/pyannote/speaker-diarization-community-1)); † marks a
+corpus those authors do not report, where we ran their open-source pipeline unchanged
+(default parameters) on the same files with the same scoring. For NOTSOFAR-1 the DiariZen
+authors report 16.7 on a different session split.
+
+## Architecture
+
+* **Segmentation**: WavLM (learned mixture of all layers) → 4-layer Conformer → powerset
+  classifier (4 speakers / 10 s window, up to 2 simultaneous). WavLM-Base+, 114 M params
+  for SUPlime; WavLM-Large, 349 M for SUPlime-L. This is the only difference between them.
+* **Embedding**: WeSpeaker SimAM-ResNet34 with attentive statistics pooling
+  (`voxblink2_samresnet34_ft`, 25 M params, 256-dim). Shared, byte for byte.
+* **Clustering**: agglomerative (centroid linkage), threshold 0.72, `min_cluster_size` 12,
+  overlap excluded from embeddings. Shared.
 
 ## Training
 
