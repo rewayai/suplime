@@ -161,6 +161,11 @@ class RamAugment:
             return _Out(samples, targets)
         out = self.mix(samples=samples, sample_rate=sample_rate, targets=targets)
         x, targets = out.samples, out.targets  # (B, 1, T)
+        if x is samples:
+            # torch_audiomentations returns the input tensor itself when no element was
+            # selected for mixing (p=0.5 per element, so ~6% of batches at B=4). reshape()
+            # below is a view, so reverb/noise would then write into the caller's batch.
+            x = x.clone()
         B, C, T = x.shape
         flat = x.reshape(B, T)
         m = torch.rand(B) < self.P_REVERB

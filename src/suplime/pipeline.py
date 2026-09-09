@@ -141,14 +141,15 @@ class SuplimeDiarization(SpeakerDiarization):
                 min_duration_off=Uniform(0.0, 1.0),
             )
 
-        if self.klustering == "OracleClustering":
-            metric = "not_applicable"
-        else:
-            self._embedding = PretrainedSpeakerEmbedding(
-                self.embedding, token=token, cache_dir=cache_dir
-            )
-            self._audio = Audio(sample_rate=self._embedding.sample_rate, mono="downmix")
-            metric = self._embedding.metric
+        # pyannote 3.x skipped the embedding model for OracleClustering; 4.0.7's
+        # SpeakerDiarization.apply calls get_embeddings unconditionally and dereferences
+        # self._embedding / self._audio, so skipping them here made OracleClustering raise
+        # AttributeError on the first call. Always build them.
+        self._embedding = PretrainedSpeakerEmbedding(
+            self.embedding, token=token, cache_dir=cache_dir
+        )
+        self._audio = Audio(sample_rate=self._embedding.sample_rate, mono="downmix")
+        metric = "not_applicable" if self.klustering == "OracleClustering" else self._embedding.metric
 
         try:
             Klustering = Clustering[clustering]
@@ -161,7 +162,19 @@ class SuplimeDiarization(SpeakerDiarization):
         self._expects_num_speakers = self.clustering.expects_num_clusters
 
     def default_parameters(self):
-        """Hyper-parameters the published benchmark numbers were produced with."""
+        """Hyper-parameters the published benchmark numbers were produced with.
+
+        Only defined for the default AgglomerativeClustering: the other clustering modes
+        take different parameters entirely (KMeans and Oracle define no ``method`` or
+        ``threshold``), so returning these would hand ``instantiate`` a dict it must reject.
+        """
+        if self.klustering != "AgglomerativeClustering":
+            raise NotImplementedError(
+                f"default_parameters() describes the published AgglomerativeClustering setup; "
+                f"{self.klustering} takes different parameters. Instantiate it explicitly, e.g. "
+                f'pipeline.instantiate({{"segmentation": {{"min_duration_off": 0.0}}, '
+                f'"clustering": {{...}}}}).'
+            )
         return {
             "segmentation": {"min_duration_off": 0.0},
             "clustering": {"method": "centroid", "min_cluster_size": 12, "threshold": 0.72},

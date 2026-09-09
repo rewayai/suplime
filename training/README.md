@@ -99,8 +99,8 @@ exists resumes from it, optimizer and schedule included. A finished run leaves a
 `DONE` file and is never resumed, so a scheduler may relaunch the command blindly.
 This is how the released model was trained, on preemptible cloud GPUs.
 
-Other knobs: `--wavlm WAVLM_LARGE` (needs `--batch-size 8 --accumulate-grad-batches 4`
-on 48 GB), `--devices N` for DDP (batch is per device; keep the product at 32 to stay
+Other knobs: `--wavlm WAVLM_LARGE` (never at the default batch 32 — it OOMs; see the
+SUPlime-L recipe below for the per-card batch sizes), `--devices N` for DDP (batch is per device; keep the product at 32 to stay
 on-recipe), `--init-ckpt` to warm-start weights, `--cache` to reuse a prepared task
 cache between runs, `--fast-dev 5` for a smoke test.
 
@@ -121,9 +121,11 @@ suplime-train --out runs/suplime-l-b192 --database training/database.yml --aug-r
 suplime-soup runs/suplime-l-b192/checkpoints -k 5 -o suplime_l_avg5.ckpt
 ```
 
-Roughly 3× the compute of the base recipe per epoch. On 40 GB cards batch 12 per rank
-fits; on 80 GB use `--batch-size 24 --accumulate-grad-batches 1` for the same
-effective batch and fewer all-reduces.
+Roughly 3× the compute of the base recipe per epoch, and it does not fit at the default
+batch 32. Measured per-rank batch sizes: **8 on 24–32 GB, 12 on 40 GB** (about 22 GB in
+use; 24 measured 39.3 GB and does not fit), **24 on 80 GB**. Keep the effective batch —
+per-rank batch × `--accumulate-grad-batches` × `--devices` — at 32 for stage 1 and 192 for
+stage 2, whichever card you land on.
 
 ## 3. Soup, convert, evaluate
 

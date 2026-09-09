@@ -20,6 +20,7 @@ pyannote.audio==4.0.7
 pyannote.core==6.0.1
 pyannote.database==6.1.1
 pyannote.metrics==4.1
+pyannote.pipeline==4.0.0   # imported directly by src/suplime/pipeline.py
 lightning==2.6.5
 huggingface-hub==1.30.0
 numpy==2.5.2

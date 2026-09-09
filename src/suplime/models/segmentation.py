@@ -30,7 +30,6 @@ published checkpoint contains, so attribute names here must not change.
 """
 
 import os
-from functools import lru_cache
 from typing import Optional
 
 import torch
@@ -195,9 +194,15 @@ class SuplimeSegmentation(Model):
         w = self.wav2vec
         return w.feature_extractor if hasattr(w, "feature_extractor") else w.model.feature_extractor
 
-    @lru_cache
     def num_frames(self, num_samples: int) -> int:
         """Number of output frames for `num_samples` input samples."""
+        cache = self.__dict__.setdefault("_num_frames_cache", {})
+        if num_samples in cache:
+            return cache[num_samples]
+        cache[num_samples] = _n = self._num_frames(num_samples)
+        return _n
+
+    def _num_frames(self, num_samples: int) -> int:
         num_frames = num_samples
         for conv_layer in self._feature_extractor.conv_layers:
             num_frames = conv1d_num_frames(

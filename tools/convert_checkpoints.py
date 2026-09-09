@@ -74,8 +74,12 @@ def convert_segmentation(src: Path, dst: Path) -> None:
         wav2vec = dict(bundle._params)
         print(f"[seg] inlined torchaudio.pipelines.{hp['wav2vec']} config ({len(wav2vec)} keys), "
               f"normalize_waveform={normalize}")
-    assert hp.get("conformer") is not None, "only Conformer-head checkpoints are supported"
-    assert hp.get("mamba") is None
+    # SystemExit, not assert: python -O (set by some container images) compiles asserts away,
+    # and these are the only correctness gate on files published to the Hub
+    if hp.get("conformer") is None:
+        raise SystemExit("only Conformer-head checkpoints are supported")
+    if hp.get("mamba") is not None:
+        raise SystemExit("this checkpoint has a Mamba head, which suplime does not ship")
 
     ckpt["hyper_parameters"] = {
         "wav2vec": wav2vec,
@@ -94,14 +98,28 @@ def convert_segmentation(src: Path, dst: Path) -> None:
         "pyannote.audio": pyannote_version(),
         "suplime": SUPLIME_VERSION,
     }
+    # write to a temporary name and only publish it once the strict reload has passed:
+    # a half-converted checkpoint at the real path would be picked up by a later upload
     dst.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(ckpt, dst)
-
-    model = SuplimeSegmentation.load_from_checkpoint(dst, map_location="cpu", strict=True, weights_only=False)
-    n = sum(p.numel() for p in model.parameters())
-    frames = model.num_frames(int(10 * model.hparams.sample_rate))
-    assert model.specifications.powerset, "expected a powerset model"
-    print(f"[seg] strict reload OK: {n:,} params, {frames} frames / 10 s, "
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    torch.save(ckpt, tmp)
+    try:
+        model = SuplimeSegmentation.load_from_checkpoint(tmp, map_location="cpu", strict=True,
+                                                         weights_only=False)
+        n = sum(p.numel() for p in model.parameters())
+        frames = model.num_frames(int(10 * model.hparams.sample_rate))
+        if not model.specifications.powerset:
+            raise SystemExit("expected a powerset model")
+        with torch.inference_mode():   # a reload that cannot run is not a working artifact
+            scores = model.eval()(torch.zeros(1, 1, int(10 * model.hparams.sample_rate)))
+        if scores.shape != (1, frames, model.specifications.num_powerset_classes):
+            raise SystemExit(f"forward produced {tuple(scores.shape)}, expected "
+                             f"(1, {frames}, {model.specifications.num_powerset_classes})")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    tmp.replace(dst)
+    print(f"[seg] strict reload + forward OK: {n:,} params, {frames} frames / 10 s, "
           f"{model.specifications.num_powerset_classes} powerset classes -> {dst} ({dst.stat().st_size/1e6:.1f} MB)")
 
 
@@ -119,11 +137,24 @@ def convert_embedding(src: Path, dst: Path) -> None:
         "suplime": SUPLIME_VERSION,
     }
     dst.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(ckpt, dst)
-
-    model = WeSpeakerSimAMResNet34.load_from_checkpoint(dst, map_location="cpu", strict=True, weights_only=False)
-    n = sum(p.numel() for p in model.parameters())
-    print(f"[emb] strict reload OK: {n:,} params, dimension {model.dimension} -> {dst} ({dst.stat().st_size/1e6:.1f} MB)")
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    torch.save(ckpt, tmp)
+    try:
+        model = WeSpeakerSimAMResNet34.load_from_checkpoint(tmp, map_location="cpu", strict=True,
+                                                            weights_only=False)
+        n = sum(p.numel() for p in model.parameters())
+        # the embedding model was never exercised here, so "strict reload OK" said nothing
+        # about whether the file works; a forward is cheap and catches fbank mismatches
+        with torch.inference_mode():
+            emb = model.eval()(torch.zeros(1, 1, 3 * model.hparams.sample_rate))
+        if emb.shape != (1, model.dimension):
+            raise SystemExit(f"forward produced {tuple(emb.shape)}, expected (1, {model.dimension})")
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    tmp.replace(dst)
+    print(f"[emb] strict reload + forward OK: {n:,} params, dimension {model.dimension} "
+          f"-> {dst} ({dst.stat().st_size/1e6:.1f} MB)")
 
 
 def main():

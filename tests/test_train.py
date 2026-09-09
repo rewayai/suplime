@@ -158,6 +158,75 @@ def test_wavlm_large_bundle_loads_into_the_model_it_builds(tmp_path, corpus, mon
     assert model.hparams.wav2vec["encoder_embed_dim"] == 1024
 
 
+def test_augment_never_writes_into_the_callers_batch(tmp_path):
+    """torch_audiomentations returns the input tensor itself when no element is selected for
+    mixing (~6% of batches at B=4), and reshape() is a view — so reverb/noise used to write
+    straight into the caller's tensor, which also made the assertion below vacuous."""
+    root = tmp_path / "aug"
+    (root / "musan" / "noise" / "free").mkdir(parents=True)
+    (root / "RIRS_NOISES" / "simulated_rirs" / "small").mkdir(parents=True)
+    _write_wav(root / "musan" / "noise" / "free" / "n1.wav", 2.0)
+    _write_wav(root / "RIRS_NOISES" / "simulated_rirs" / "small" / "r1.wav", 0.3)
+    from suplime.augment import RamAugment
+
+    aug = RamAugment(root, max_speakers=2, n_rirs=1)
+    aug.P_REVERB = aug.P_NOISE = 1.0
+    for seed in range(24):          # >> 1/0.5**4, so the no-mix path is certainly exercised
+        torch.manual_seed(seed)
+        x = torch.randn(4, 1, 3 * SR)
+        before = x.clone()
+        out = aug(samples=x, sample_rate=SR, targets=torch.zeros(4, 1, 150, 2))
+        assert torch.equal(x, before), f"input mutated in place (seed {seed})"
+        assert not torch.allclose(out.samples, x)
+
+
+def test_soup_takes_version_suffixed_checkpoints_and_rejects_foreign_ones(tmp_path):
+    """A preempted run re-validating to the same DER writes EE-D.DDDD-v1.ckpt; those were
+    silently skipped, so `-k 5` could average fewer. And name-only matching let checkpoints
+    from a different run broadcast into a wrong average."""
+    d = tmp_path / "checkpoints"
+    d.mkdir()
+
+    def ckpt(path, w, shape=(3,), hp={"a": 1}):
+        torch.save({"state_dict": {"w": torch.full(shape, float(w))},
+                    "hyper_parameters": hp, "pyannote.audio": {"x": 1}}, path)
+
+    ckpt(d / "05-0.1000.ckpt", 1.0)
+    ckpt(d / "05-0.1000-v1.ckpt", 2.0)     # same epoch+DER, written after a resume
+    ckpt(d / "06-0.2000.ckpt", 3.0)
+    picked = soup.best_checkpoints(d, 2)
+    assert [p.name for p in picked] == ["05-0.1000-v1.ckpt", "06-0.2000.ckpt"], picked
+
+    ckpt(d / "07-0.3000.ckpt", 4.0, shape=(1,))          # broadcastable but wrong
+    with pytest.raises(SystemExit, match="different runs"):
+        soup.average_checkpoints([d / "05-0.1000.ckpt", d / "07-0.3000.ckpt"], tmp_path / "o.ckpt")
+
+    ckpt(d / "08-0.4000.ckpt", 5.0, hp={"a": 2})         # same shapes, different run
+    with pytest.raises(SystemExit, match="different runs"):
+        soup.average_checkpoints([d / "05-0.1000.ckpt", d / "08-0.4000.ckpt"], tmp_path / "o.ckpt")
+
+    with pytest.raises(SystemExit, match="-k must be at least 2"):
+        soup.best_checkpoints(d, 1)
+
+
+def test_warm_start_refuses_a_foreign_checkpoint(tmp_path, corpus):
+    """--init-ckpt from another architecture matched almost nothing and degraded to a
+    from-scratch run at a warm-start learning rate, discovered days later."""
+    foreign = tmp_path / "foreign.ckpt"
+    torch.save({"state_dict": {"nothing.like.this": torch.zeros(3)}}, foreign)
+    # not --fast-dev: that path builds a bare Trainer with no callbacks, so _WarmStart
+    # (and therefore --init-ckpt) is not attached at all
+    argv = _argv(tmp_path / "run", corpus, "--max-epochs", "1", "--limit-train-batches", "1",
+                 "--limit-val-batches", "1", "--ckpt-minutes", "0", "--init-ckpt", str(foreign))
+    with pytest.raises(SystemExit, match="not a checkpoint of this architecture"):
+        train.run(train.parse_args(argv))
+
+
+def test_missing_init_ckpt_fails_before_any_work(tmp_path, corpus):
+    with pytest.raises(SystemExit, match="does not exist"):
+        train.run(train.parse_args(_argv(tmp_path / "run", corpus, "--init-ckpt", "/no/such.ckpt")))
+
+
 def test_soup_averages_float_tensors(tmp_path):
     def ckpt(v):
         return {"state_dict": {"w": torch.full((3,), float(v)), "n": torch.tensor(7)},

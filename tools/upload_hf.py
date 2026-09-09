@@ -26,7 +26,17 @@ def main():
             raise SystemExit(f"missing {a.dir / required}")
 
     api = HfApi()
+    # create_repo's `private` applies only when it actually creates the repo: with
+    # exist_ok=True it swallows the 409 and the flag is silently ignored, so a re-upload
+    # meant to be private would push new weights straight onto a public repo.
     api.create_repo(a.repo, repo_type="model", private=a.private, exist_ok=True)
+    if a.private:
+        api.update_repo_settings(repo_id=a.repo, repo_type="model", private=True)
+        print(f"[upload] {a.repo} confirmed private")
+    else:
+        info = api.repo_info(a.repo, repo_type="model")
+        if not info.private:
+            print(f"[upload] NOTE: {a.repo} is PUBLIC — this upload is immediately visible")
     info = api.upload_folder(
         folder_path=str(a.dir),
         repo_id=a.repo,

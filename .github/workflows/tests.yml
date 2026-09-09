@@ -55,5 +55,5 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python tools/release_check.py --repo rewayai/suplime --device cpu
-          python tools/release_check.py --repo rewayai/suplime-large --device cpu
+          python tools/release_check.py --repo rewayai/suplime --device cpu --speech-sample --expect base
+          python tools/release_check.py --repo rewayai/suplime-large --device cpu --speech-sample --expect large

@@ -175,12 +175,24 @@ class _WarmStart(Callback):
     def __init__(self, path):
         self.path = path
 
+    MIN_KEPT = 0.5  # below this the checkpoint is not the model we are training
+
     def on_fit_start(self, trainer, pl_module):
         state = torch.load(self.path, map_location="cpu", weights_only=False)["state_dict"]
         own = pl_module.state_dict()
         kept = {k: v for k, v in state.items() if k in own and own[k].shape == v.shape}
+        # A --init-ckpt from a different backbone matches almost nothing (WavLM-Large nests
+        # its weights under wav2vec.model.*, and the head shapes differ), and strict=False
+        # would turn that into a from-scratch run at a warm-start learning rate, discovered
+        # days later. Fail before the first step instead.
+        if len(kept) < self.MIN_KEPT * len(own):
+            raise SystemExit(
+                f"--init-ckpt {self.path} matches only {len(kept)} of {len(own)} tensors "
+                f"({100 * len(kept) / max(len(own), 1):.0f}%): it is not a checkpoint of this "
+                f"architecture. Check --wavlm and the head geometry."
+            )
         pl_module.load_state_dict(kept, strict=False)
-        print(f"warm start from {self.path}: {len(kept)} tensors loaded, "
+        print(f"warm start from {self.path}: {len(kept)}/{len(own)} tensors loaded, "
               f"{len(state) - len(kept)} skipped", flush=True)
 
 
@@ -192,9 +204,12 @@ def build_trainer(args, task, work_dir: Path):
     ckpt_dir = str(work_dir / "checkpoints")
     periodic = args.ckpt_minutes > 0
     callbacks = [
+        # enable_version_counter=False here too: a preempted run that resumes mid-epoch and
+        # re-validates to the same DER would otherwise write EE-D.DDDD-v1.ckpt alongside the
+        # original, and every extra copy competes for one of the five top-k slots.
         ModelCheckpoint(dirpath=ckpt_dir, filename="{epoch:02d}-{DiarizationErrorRate:.4f}",
                         monitor=monitor, mode=mode, save_top_k=5, save_last=not periodic,
-                        auto_insert_metric_name=False),
+                        auto_insert_metric_name=False, enable_version_counter=False),
         EarlyStopping(monitor=monitor, mode=mode, patience=args.patience),
         LearningRateMonitor(logging_interval="step"),
     ]
@@ -228,6 +243,11 @@ def build_trainer(args, task, work_dir: Path):
 
 
 def run(args):
+    # fail before RamAugment preloads gigabytes and the protocol is scanned
+    if args.init_ckpt and not Path(args.init_ckpt).exists():
+        raise SystemExit(f"--init-ckpt {args.init_ckpt} does not exist")
+    if args.augment == "full" and args.n_rirs < 1:
+        raise SystemExit(f"--n-rirs must be at least 1 with --augment full, got {args.n_rirs}")
     seed_everything(args.seed, workers=True)
     torch.set_float32_matmul_precision("high")
     work_dir = Path(args.out)

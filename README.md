@@ -136,8 +136,10 @@ suplime-soup runs/suplime/checkpoints -k 5 -o suplime_avg5.ckpt
 ```
 
 About 48 GPU-hours on one 32 GB card; interrupted runs resume from `last.ckpt`
-with the same command. Add `--wavlm WAVLM_LARGE` for the SUPlime-L variant
-(roughly 3× the compute, and it needs more than one card at the same batch size).
+with the same command. SUPlime-L is a two-stage recipe rather than a flag — it needs a
+smaller per-rank batch (WavLM-Large OOMs at the default 32) and a second stage at effective
+batch 192; both commands are in
+[`training/README.md`](training/README.md#suplime-l-wavlm-large).
 
 ## Development
 

@@ -165,6 +165,15 @@ change.
   higher threshold is usually better.
 - Roughly 3× the segmentation compute and memory of SUPlime for 0.36 DER on the
   8-corpus benchmark, and it is *behind* SUPlime on the 12-corpus macro average.
+- **Results depend on `segmentation_batch_size`.** WavLM-Large is used through torchaudio's
+  normalising bundle wrapper, which layer-normalises over the whole input tensor — so a
+  chunk's scores depend on the other chunks batched with it, and a file's zero-padded last
+  chunk is normalised against its own padding. Measured: scoring four 10 s chunks together
+  rather than singly moves scores by up to 2.8 in log-space. Every number here was produced
+  with the shipped `segmentation_batch_size: 32`; change it and you get slightly different
+  output. This matches torchaudio's own `*_LARGE` bundles
+  (`pipelines/_wav2vec2/utils.py`), so it is shared with every system built on them —
+  SUPlime (Base+) is unaffected, its bundle does not normalise.
 - The powerset head models at most 2 simultaneous speakers per frame and 4 speakers
   per 10 s window; recordings with heavy 3-way overlap are under-served.
 - Trained on 16 kHz meeting / conversational / broadcast / movie audio; telephone

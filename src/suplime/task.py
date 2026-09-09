@@ -44,9 +44,14 @@ from pyannote.audio.utils.permutation import permutate, permutate_torch
 _LOW = (torch.bfloat16, torch.float16)
 
 
-def _permutate_torch_fp32(y1: torch.Tensor, y2: torch.Tensor, **kwargs):
-    """``permutate_torch`` with the matching cost computed in float32."""
-    return permutate_torch(y1.float(), y2.float() if y2.dtype in _LOW else y2, **kwargs)
+def _permutate_torch_fp32(y1: torch.Tensor, y2: torch.Tensor, *args, **kwargs):
+    """``permutate_torch`` with the matching cost computed in float32.
+
+    ``*args`` matters: upstream's signature takes ``cost_func`` positionally, and this
+    handler replaces it for every caller — narrowing it to keyword-only would break any
+    caller that passes it positionally.
+    """
+    return permutate_torch(y1.float(), y2.float() if y2.dtype in _LOW else y2, *args, **kwargs)
 
 
 # `permutate` is a functools.singledispatch function used by the task's training and

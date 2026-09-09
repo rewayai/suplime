@@ -113,6 +113,21 @@ def main():
     if a.limit:
         uris = uris[: a.limit]
     hyp_dir = a.out / "hyp"
+    # Hypotheses are reused by filename alone, so without this a re-run with a different
+    # --model or --threshold silently rescored the OLD hypotheses and wrote the NEW
+    # parameters into the JSON — a threshold sweep in which nothing was re-diarized.
+    stamp_path = a.out / "run_params.json"
+    stamp = {"model": str(a.model), "threshold": a.threshold}
+    if stamp_path.exists():
+        previous = json.loads(stamp_path.read_text())
+        if previous != stamp and any(hyp_dir.glob("*.rttm")):
+            raise SystemExit(
+                f"{hyp_dir} holds hypotheses produced with {previous}, but this run asks for "
+                f"{stamp}. Re-running here would reuse the old RTTMs and report the new "
+                f"parameters. Use a different --out, or delete {hyp_dir}."
+            )
+    a.out.mkdir(parents=True, exist_ok=True)
+    stamp_path.write_text(json.dumps(stamp, indent=2) + "\n")
     hyp_dir.mkdir(parents=True, exist_ok=True)
 
     pipeline = None
@@ -152,7 +167,8 @@ def main():
         "threshold": a.threshold,
         "n": len(uris),
         "der": total,
-        "components": {k: comp[k] / comp["total"] for k in ("missed detection", "false alarm", "confusion")},
+        "components": {k: comp[k] / max(comp["total"], 1e-9)
+                       for k in ("missed detection", "false alarm", "confusion")},
         "per_file": per_file,
         "elapsed_sec": time.time() - t_all,
     }

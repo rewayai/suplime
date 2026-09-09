@@ -30,7 +30,7 @@ Differences from the WeSpeaker original:
   model integrates with pyannote's receptive-field machinery.
 """
 
-from functools import lru_cache
+import math
 from typing import Optional
 
 import torch
@@ -77,8 +77,14 @@ class SimAMBasicBlock(nn.Module):
                 nn.BatchNorm2d(self.expansion * planes),
             )
 
-    @lru_cache
     def num_frames(self, num_samples: int) -> int:
+        cache = self.__dict__.setdefault("_num_frames_cache", {})
+        if num_samples in cache:
+            return cache[num_samples]
+        cache[num_samples] = _n = self._num_frames(num_samples)
+        return _n
+
+    def _num_frames(self, num_samples: int) -> int:
         return multi_conv_num_frames(
             num_samples,
             kernel_size=[3, 3],
@@ -146,8 +152,14 @@ class SimAMResNetFront(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    @lru_cache
     def num_frames(self, num_samples: int) -> int:
+        cache = self.__dict__.setdefault("_num_frames_cache", {})
+        if num_samples in cache:
+            return cache[num_samples]
+        cache[num_samples] = _n = self._num_frames(num_samples)
+        return _n
+
+    def _num_frames(self, num_samples: int) -> int:
         num_frames = conv1d_num_frames(
             num_samples, kernel_size=3, stride=1, padding=1, dilation=1
         )
@@ -203,7 +215,11 @@ class ASP(nn.Module):
 
     def __init__(self, in_planes: int, acoustic_dim: int):
         super(ASP, self).__init__()
-        outmap_size = int(acoustic_dim / 8)
+        # ceil, not truncation: the front-end halves the frequency axis three times with
+        # stride-2 convs, which round up. int() disagreed for any num_mel_bins not a
+        # multiple of 8 (100 -> front-end 13, formula 12) and built a model that loads
+        # strict=True and then dies on the first forward with a channel mismatch.
+        outmap_size = math.ceil(acoustic_dim / 8)
         self.feature_dim = in_planes * 8 * outmap_size
         self.out_dim = self.feature_dim * 2
 
@@ -230,8 +246,9 @@ class ASP(nn.Module):
         x : (batch, channel, freq, frames) torch.Tensor
             Output of the convolutional front-end.
         weights : (batch, frames) or (batch, speakers, frames) torch.Tensor, optional
-            Per-frame weights, linearly interpolated to the pooled resolution
-            when needed. The attention distribution is multiplied by the
+            Per-frame weights, resampled to the pooled resolution with
+            ``mode="nearest"`` when needed (matching pyannote's StatsPool; do not
+            "fix" this to linear, it would change every published embedding). The attention distribution is multiplied by the
             weights and renormalized, so ``weights=None`` reproduces
             WeSpeaker's unmasked attentive pooling exactly.
 
@@ -287,8 +304,14 @@ class SimAMResNet(nn.Module):
         self.pooling = ASP(in_planes, acoustic_dim)
         self.bottleneck = nn.Linear(self.pooling.out_dim, embed_dim)
 
-    @lru_cache
     def num_frames(self, num_samples: int) -> int:
+        cache = self.__dict__.setdefault("_num_frames_cache", {})
+        if num_samples in cache:
+            return cache[num_samples]
+        cache[num_samples] = _n = self._num_frames(num_samples)
+        return _n
+
+    def _num_frames(self, num_samples: int) -> int:
         return self.front.num_frames(num_samples)
 
     def receptive_field_size(self, num_frames: int = 1) -> int:

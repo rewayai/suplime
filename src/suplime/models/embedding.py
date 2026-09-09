@@ -50,20 +50,30 @@ class WeSpeakerSimAMResNet34(BaseWeSpeakerResNet):
         num_mel_bins: int = 80,
         frame_length: int = 25,
         frame_shift: int = 10,
+        round_to_power_of_two: bool = True,
+        snip_edges: bool = True,
         dither: float = 0.0,
         window_type: str = "hamming",
         use_energy: bool = False,
+        fbank_centering_span: Optional[float] = None,
         task: Optional[Task] = None,
     ):
+        # Every fbank parameter the base class saves has to appear here: Lightning's
+        # load_from_checkpoint filters saved hyper-parameters through THIS signature, so a
+        # narrower one silently drops snip_edges / fbank_centering_span / round_to_power_of_two
+        # on reload and rebuilds the feature extractor with different settings.
         super().__init__(
             sample_rate=sample_rate,
             num_channels=num_channels,
             num_mel_bins=num_mel_bins,
             frame_length=frame_length,
             frame_shift=frame_shift,
+            round_to_power_of_two=round_to_power_of_two,
+            snip_edges=snip_edges,
             dither=dither,
             window_type=window_type,
             use_energy=use_energy,
+            fbank_centering_span=fbank_centering_span,
             task=task,
         )
         self.resnet = SimAMResNet34(num_mel_bins, 256)

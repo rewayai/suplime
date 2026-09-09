@@ -22,9 +22,16 @@ three orders of magnitude more comfortable.
 """
 import argparse
 import os
+import subprocess
 import sys
 import wave
 from pathlib import Path
+
+# Before ANY import that pulls in huggingface_hub: constants.HF_HUB_OFFLINE is evaluated
+# once, at import time, from the environment. Setting it after the import (as this script
+# first did) left the --repo path online while claiming otherwise. The download itself runs
+# in a child process with the flag off, so this process never needs the network.
+os.environ["HF_HUB_OFFLINE"] = "1"
 
 import numpy as np
 import torch
@@ -49,8 +56,19 @@ def synth_wav(path: Path, seconds: float = 12.0, sr: int = 16000) -> Path:
     return path
 
 
+# 3.4 s of read speech from torchaudio's tutorial assets (VOiCES, CC BY 4.0). Small, stable
+# and public, so CI can make a real "did any speech come back" assertion without a corpus.
+SPEECH_SAMPLE_URL = ("https://download.pytorch.org/torchaudio/tutorial-assets/"
+                     "Lab41-SRI-VOiCES-src-sp0307-ch127535-sg0042.wav")
+
 EXPECTED = {"clustering": {"method": "centroid", "min_cluster_size": 12, "threshold": 0.72},
             "segmentation": {"min_duration_off": 0.0}}
+
+# Both variants share the pipeline config, the frame count and the class count, so those
+# checks alone cannot tell them apart: `upload_hf.py --repo ...-large --dir hf` would pass.
+# Parameter count and the normalisation flag are what actually identify the model.
+VARIANTS = {"base":  {"params": 114_323_207, "normalize": False},
+            "large": {"params": 349_374_819, "normalize": True}}
 
 
 def main() -> int:
@@ -59,21 +77,29 @@ def main() -> int:
     src.add_argument("--repo", help="Hugging Face repo id, e.g. rewayai/suplime")
     src.add_argument("--dir", type=Path, help="local staging directory instead of a download")
     ap.add_argument("--audio", type=Path, help="wav to run (default: a synthetic 12 s file)")
+    ap.add_argument("--speech-sample", action="store_true",
+                    help="download a small public speech clip and use it as --audio, so the "
+                         "end-to-end assertion runs without a local corpus (what CI does)")
+    ap.add_argument("--expect", choices=sorted(VARIANTS),
+                    help="which model this repo must contain (default: inferred from the "
+                         "repo id or directory name)")
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     a = ap.parse_args()
 
     if a.repo:
-        from huggingface_hub import snapshot_download
-
-        # allow_patterns keeps reproducible_research/ (thousands of RTTMs) out of the download
-        root = Path(snapshot_download(a.repo, allow_patterns=["*.yaml", "*.bin", "*.md"]))
+        # download in a child process with the offline flag cleared, so THIS process stays
+        # offline from its first import and the check below is a real guarantee
+        code = ("import sys; from huggingface_hub import snapshot_download; "
+                "print(snapshot_download(sys.argv[1], "
+                "allow_patterns=['*.yaml', '*.bin', '*.md']))")
+        env = {**os.environ, "HF_HUB_OFFLINE": "0"}
+        root = Path(subprocess.run([sys.executable, "-c", code, a.repo], env=env, check=True,
+                                   capture_output=True, text=True).stdout.strip())
         print(f"[check] downloaded {a.repo} -> {root}")
     else:
         root = a.dir.resolve()
         print(f"[check] using local {root}")
 
-    # from here on nothing may touch the network: a release that needs it is broken
-    os.environ["HF_HUB_OFFLINE"] = "1"
     from pyannote.audio import Pipeline
 
     pipeline = Pipeline.from_pretrained(root / "config.yaml").to(torch.device(a.device))
@@ -88,8 +114,18 @@ def main() -> int:
     seg = pipeline._segmentation.model
     n = sum(p.numel() for p in seg.parameters())
     frames, classes = seg.num_frames(160000), seg.specifications.num_powerset_classes
+    normalize = bool(seg.hparams.get("normalize_waveform", False))
     print(f"[check] segmentation: {type(seg).__name__}, {n:,} params, {frames} frames / 10 s, "
-          f"{classes} powerset classes, normalize_waveform={seg.hparams.get('normalize_waveform', False)}")
+          f"{classes} powerset classes, normalize_waveform={normalize}")
+
+    name = a.expect or ("large" if "large" in (a.repo or str(a.dir)).lower() else "base")
+    want = VARIANTS[name]
+    if (n, normalize) != (want["params"], want["normalize"]):
+        print(f"[check] FAIL: expected the {name} model ({want['params']:,} params, "
+              f"normalize_waveform={want['normalize']}) but this repo holds {n:,} params, "
+              f"normalize_waveform={normalize} — wrong weights published?")
+        return 1
+    print(f"[check] identity OK: this is the {name} model")
 
     # deterministic, corpus-free: the head must emit a valid powerset distribution.
     # The activation is LogSoftmax, so the probabilities are exp(scores).
@@ -103,7 +139,15 @@ def main() -> int:
         return 1
     print(f"[check] segmentation output OK: {tuple(scores.shape)}, exp(rows) sum to 1")
 
-    audio = a.audio or synth_wav(Path(os.environ.get("TMPDIR", "/tmp")) / "suplime_release_check.wav")
+    tmpdir = Path(os.environ.get("TMPDIR", "/tmp"))
+    if a.speech_sample and not a.audio:
+        import urllib.request
+
+        a.audio = tmpdir / "suplime_speech_sample.wav"
+        if not a.audio.exists():
+            urllib.request.urlretrieve(SPEECH_SAMPLE_URL, a.audio)
+        print(f"[check] speech sample: {a.audio}")
+    audio = a.audio or synth_wav(tmpdir / "suplime_release_check.wav")
     out = pipeline(str(audio))
     ann = out.speaker_diarization
     turns = list(ann.itertracks(yield_label=True))
