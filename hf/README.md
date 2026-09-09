@@ -41,7 +41,7 @@ Open-weights speaker diarization by [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x. One 16 kHz mono
 recording in, who-spoke-when out; no speaker count needed.
 
-This is the **WavLM-Base+** model: 114 M parameters, the cheaper of the two and the better one across all 12 corpora we score. Its sibling [SUPlime-L](https://huggingface.co/rewayai/suplime-large) swaps in a WavLM-Large backbone and leads pyannote's 8-corpus benchmark — **15.85 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)** — at roughly 3× the inference cost. Same recipe, same embedding, same clustering, same threshold; pick by domain, not by size, see [Which variant](#which-variant).
+This is the **WavLM-Base+** model: 114 M parameters, the cheaper of the two and the better one across all 12 corpora we score. Its sibling [SUPlime-L](https://huggingface.co/rewayai/suplime-large) swaps in a WavLM-Large backbone and leads pyannote's 8-corpus benchmark — **15.86 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)** — at roughly 3× the inference cost. Same recipe, same embedding, same clustering, same threshold; pick by domain, not by size, see [Which variant](#which-variant).
 
 **Weights are released under CC BY-NC 4.0 (non-commercial)** because part of the
 training data is licensed for research use only, which rules out commercial use of
@@ -125,19 +125,19 @@ Diarization error rate (%), lower is better:
 | AISHELL-4 | 11.55 | 11.21 | **10.1** | 11.4 | 11.7 |
 | AliMeeting (far, ch1) | 14.45 | 14.55 | **10.8** | 15.2 | 20.3 |
 | AMI (IHM, Mix-Headset) | 12.59 | **11.91** | 25.69 † | 12.9 | 17.0 |
-| AMI (SDM) | 15.14 | 14.84 | **13.9** | 15.6 | 19.9 |
-| AVA-AVD | 38.09 | **36.78** | 42.62 † | 37.1 | 44.6 |
+| AMI (SDM) | 15.14 | 14.85 | **13.9** | 15.6 | 19.9 |
+| AVA-AVD | 38.09 | **36.83** | 42.62 † | 37.1 | 44.6 |
 | MSDWild (few.val) | 17.81 | 17.48 | **15.8** | 17.3 | 22.8 |
 | RAMC | 10.86 | 11.10 | 11.0 | **10.5** | 20.8 |
 | VoxConverse (v0.3) | 9.21 | 8.93 | 9.1 | **8.5** | 11.2 |
-| **macro average (8)** | 16.21 | **15.85** | 17.38 | 16.06 | 21.04 |
-| NOTSOFAR-1 (80-session split) | 20.04 | 22.68 | **18.86 †** | — | 27.67 † |
+| **macro average (8)** | 16.21 | **15.86** | 17.38 | 16.06 | 21.04 |
+| NOTSOFAR-1 (80-session split) | 20.04 | 22.70 | **18.86 †** | — | 27.67 † |
 | ICSI | 22.97 | **22.77** | 26.54 † | — | 30.84 † |
-| CHiME-6 | **48.11** | 48.88 | 48.39 † | — | 51.98 † |
+| CHiME-6 | **48.11** | 48.98 | 48.39 † | — | 51.98 † |
 | DiPCo | **30.44** | 30.92 | 37.56 † | — | 34.38 † |
-| **macro average (12)** | **20.94** | 21.00 | 22.53 | — | 26.10 |
+| **macro average (12)** | **20.94** | 21.02 | 22.53 | — | 26.10 |
 
-SUPlime-L leads the 8-corpus benchmark at 15.85 macro DER — ahead of `precision-2`
+SUPlime-L leads the 8-corpus benchmark at 15.86 macro DER — ahead of `precision-2`
 (16.06), SUPlime (16.21) and DiariZen-L-s80-v2 (17.38) — while across all 12 corpora
 SUPlime takes it back by 0.06, the four extra sets being far-field and dinner-party audio
 where the larger backbone does not pay off. Both beat DiariZen by ~1.5 DER on the 12-corpus
@@ -159,8 +159,8 @@ and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split
 |---|--:|--:|
 | Backbone | WavLM-Base+ | WavLM-Large |
 | Parameters (segmentation) | 114 M | 349 M |
-| macro DER, 8-corpus benchmark | 16.21 | **15.85** |
-| macro DER, all 12 corpora | **20.94** | 21.00 |
+| macro DER, 8-corpus benchmark | 16.21 | **15.86** |
+| macro DER, all 12 corpora | **20.94** | 21.02 |
 | Relative inference cost | 1× | ≈ 3× |
 
 Take SUPlime-L for meeting and conversational audio of the kind the 8-corpus benchmark

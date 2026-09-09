@@ -41,7 +41,7 @@ Open-weights speaker diarization by [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x. One 16 kHz mono
 recording in, who-spoke-when out; no speaker count needed.
 
-This is the **WavLM-Large** model: 349 M parameters, and the leader of pyannote's 8-corpus benchmark — **15.85 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)**. Its sibling [SUPlime](https://huggingface.co/rewayai/suplime) runs a WavLM-Base+ backbone at a third of the cost and is the better model across all 12 corpora we score. Same recipe, same embedding, same clustering, same threshold; pick by domain, not by size, see [Which variant](#which-variant).
+This is the **WavLM-Large** model: 349 M parameters, and the leader of pyannote's 8-corpus benchmark — **15.86 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)**. Its sibling [SUPlime](https://huggingface.co/rewayai/suplime) runs a WavLM-Base+ backbone at a third of the cost and is the better model across all 12 corpora we score. Same recipe, same embedding, same clustering, same threshold; pick by domain, not by size, see [Which variant](#which-variant).
 
 **Weights are released under CC BY-NC 4.0 (non-commercial)** because part of the
 training data is licensed for research use only, which rules out commercial use of
@@ -125,19 +125,19 @@ Diarization error rate (%), lower is better:
 | AISHELL-4 | 11.21 | 11.55 | **10.1** | 11.4 | 11.7 |
 | AliMeeting (far, ch1) | 14.55 | 14.45 | **10.8** | 15.2 | 20.3 |
 | AMI (IHM, Mix-Headset) | **11.91** | 12.59 | 25.69 † | 12.9 | 17.0 |
-| AMI (SDM) | 14.84 | 15.14 | **13.9** | 15.6 | 19.9 |
-| AVA-AVD | **36.78** | 38.09 | 42.62 † | 37.1 | 44.6 |
+| AMI (SDM) | 14.85 | 15.14 | **13.9** | 15.6 | 19.9 |
+| AVA-AVD | **36.83** | 38.09 | 42.62 † | 37.1 | 44.6 |
 | MSDWild (few.val) | 17.48 | 17.81 | **15.8** | 17.3 | 22.8 |
 | RAMC | 11.10 | 10.86 | 11.0 | **10.5** | 20.8 |
 | VoxConverse (v0.3) | 8.93 | 9.21 | 9.1 | **8.5** | 11.2 |
-| **macro average (8)** | **15.85** | 16.21 | 17.38 | 16.06 | 21.04 |
-| NOTSOFAR-1 (80-session split) | 22.68 | 20.04 | **18.86 †** | — | 27.67 † |
+| **macro average (8)** | **15.86** | 16.21 | 17.38 | 16.06 | 21.04 |
+| NOTSOFAR-1 (80-session split) | 22.70 | 20.04 | **18.86 †** | — | 27.67 † |
 | ICSI | **22.77** | 22.97 | 26.54 † | — | 30.84 † |
-| CHiME-6 | 48.88 | **48.11** | 48.39 † | — | 51.98 † |
+| CHiME-6 | 48.98 | **48.11** | 48.39 † | — | 51.98 † |
 | DiPCo | 30.92 | **30.44** | 37.56 † | — | 34.38 † |
-| **macro average (12)** | 21.00 | **20.94** | 22.53 | — | 26.10 |
+| **macro average (12)** | 21.02 | **20.94** | 22.53 | — | 26.10 |
 
-SUPlime-L leads the 8-corpus benchmark at 15.85 macro DER — ahead of `precision-2`
+SUPlime-L leads the 8-corpus benchmark at 15.86 macro DER — ahead of `precision-2`
 (16.06), SUPlime (16.21) and DiariZen-L-s80-v2 (17.38) — while across all 12 corpora
 SUPlime takes it back by 0.06, the four extra sets being far-field and dinner-party audio
 where the larger backbone does not pay off. Both beat DiariZen by ~1.5 DER on the 12-corpus
@@ -159,8 +159,8 @@ and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split
 |---|--:|--:|
 | Backbone | WavLM-Large | WavLM-Base+ |
 | Parameters (segmentation) | 349 M | 114 M |
-| macro DER, 8-corpus benchmark | **15.85** | 16.21 |
-| macro DER, all 12 corpora | 21.00 | **20.94** |
+| macro DER, 8-corpus benchmark | **15.86** | 16.21 |
+| macro DER, all 12 corpora | 21.02 | **20.94** |
 | Relative inference cost | ≈ 3× | 1× |
 
 Take SUPlime-L for meeting and conversational audio of the kind the 8-corpus benchmark
@@ -179,7 +179,7 @@ change.
   on this model it is worth more than on the base one. A DER-optimal threshold tends to
   over-merge speakers; if your downstream metric is speaker-attributed WER, a slightly
   higher threshold is usually better.
-- Roughly 3× the segmentation compute and memory of SUPlime for 0.36 DER on the
+- Roughly 3× the segmentation compute and memory of SUPlime for 0.35 DER on the
   8-corpus benchmark, and it is *behind* SUPlime on the 12-corpus macro average.
 - **Results depend on `segmentation_batch_size`.** WavLM-Large is used through torchaudio's
   normalising bundle wrapper, which layer-normalises over the whole input tensor — so a

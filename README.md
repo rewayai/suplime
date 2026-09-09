@@ -5,7 +5,7 @@
 *SUP as in "what's up": who is speaking, and when.*
 
 The most accurate open-weights speaker diarization we know of, on both public suites:
-**15.85 macro DER on pyannote's 8-corpus benchmark** — ahead of pyannoteAI's commercial
+**15.86 macro DER on pyannote's 8-corpus benchmark** — ahead of pyannoteAI's commercial
 `precision-2` (16.06) — and **20.94 across all 12 corpora**. From the research team at
 [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x.
@@ -100,19 +100,19 @@ Diarization error rate (%), lower is better:
 | AISHELL-4 | 11.55 | 11.21 | **10.1** | 11.4 | 11.7 |
 | AliMeeting (far, ch1) | 14.45 | 14.55 | **10.8** | 15.2 | 20.3 |
 | AMI (IHM, Mix-Headset) | 12.59 | **11.91** | 25.69 † | 12.9 | 17.0 |
-| AMI (SDM) | 15.14 | 14.84 | **13.9** | 15.6 | 19.9 |
-| AVA-AVD | 38.09 | **36.78** | 42.62 † | 37.1 | 44.6 |
+| AMI (SDM) | 15.14 | 14.85 | **13.9** | 15.6 | 19.9 |
+| AVA-AVD | 38.09 | **36.83** | 42.62 † | 37.1 | 44.6 |
 | MSDWild (few.val) | 17.81 | 17.48 | **15.8** | 17.3 | 22.8 |
 | RAMC | 10.86 | 11.10 | 11.0 | **10.5** | 20.8 |
 | VoxConverse (v0.3) | 9.21 | 8.93 | 9.1 | **8.5** | 11.2 |
-| **macro average (8)** | 16.21 | **15.85** | 17.38 | 16.06 | 21.04 |
-| NOTSOFAR-1 (80-session split) | 20.04 | 22.68 | **18.86 †** | — | 27.67 † |
+| **macro average (8)** | 16.21 | **15.86** | 17.38 | 16.06 | 21.04 |
+| NOTSOFAR-1 (80-session split) | 20.04 | 22.70 | **18.86 †** | — | 27.67 † |
 | ICSI | 22.97 | **22.77** | 26.54 † | — | 30.84 † |
-| CHiME-6 | **48.11** | 48.88 | 48.39 † | — | 51.98 † |
+| CHiME-6 | **48.11** | 48.98 | 48.39 † | — | 51.98 † |
 | DiPCo | **30.44** | 30.92 | 37.56 † | — | 34.38 † |
-| **macro average (12)** | **20.94** | 21.00 | 22.53 | — | 26.10 |
+| **macro average (12)** | **20.94** | 21.02 | 22.53 | — | 26.10 |
 
-SUPlime-L leads the 8-corpus benchmark at 15.85 macro DER — ahead of `precision-2`
+SUPlime-L leads the 8-corpus benchmark at 15.86 macro DER — ahead of `precision-2`
 (16.06), the base model (16.21) and DiariZen-L-s80-v2 (17.38) — while across all 12 corpora
 the base model takes it back by 0.06, the four extra sets being far-field and dinner-party
 audio where the larger backbone does not pay off. Both beat DiariZen by ~1.5 DER on the
