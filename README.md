@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo.png" alt="SUPlime" width="280"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/rewayai/suplime/main/assets/logo.png" alt="SUPlime" width="280"></p>
 
 # SUPlime speaker diarization
 
@@ -11,8 +11,8 @@ The most accurate open-weights speaker diarization we know of, on both public su
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/results_dark.svg">
-  <img src="assets/results.svg" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rewayai/suplime/main/assets/results_dark.svg">
+  <img src="https://raw.githubusercontent.com/rewayai/suplime/main/assets/results.svg" alt="Macro-average DER of SUPlime, SUPlime-L, DiariZen-L-s80-v2, pyannoteAI precision-2 and pyannote community-1 on the 8-corpus benchmark and on all 12 corpora" width="100%">
 </picture>
 
 Two models on one recipe: [**SUPlime**](https://huggingface.co/rewayai/suplime) on a
@@ -125,7 +125,7 @@ and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split
 
 ## Training
 
-The full recipe is in [`training/README.md`](training/README.md): the training
+The full recipe is in [`training/README.md`](https://github.com/rewayai/suplime/blob/main/training/README.md): the training
 splits of the 11 public corpora, the augmentation data, and
 one command that reproduces the published checkpoint on stock pyannote.audio:
 
@@ -139,7 +139,7 @@ About 48 GPU-hours on one 32 GB card; interrupted runs resume from `last.ckpt`
 with the same command. SUPlime-L is a two-stage recipe rather than a flag — it needs a
 smaller per-rank batch (WavLM-Large OOMs at the default 32) and a second stage at effective
 batch 192; both commands are in
-[`training/README.md`](training/README.md#suplime-l-wavlm-large).
+[`training/README.md`](https://github.com/rewayai/suplime/blob/main/training/README.md#suplime-l-wavlm-large).
 
 ## Development
 

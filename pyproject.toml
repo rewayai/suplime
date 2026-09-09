@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "suplime"
 version = "0.2.0"
-description = "Suplime speaker diarization: WavLM-Base+ / Conformer segmentation + SimAM-ResNet34 embeddings, loadable through pyannote.audio 4.x"
+description = "SUPlime speaker diarization: WavLM / Conformer segmentation + SimAM-ResNet34 embeddings, loadable through pyannote.audio 4.x"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -30,6 +30,13 @@ suplime-soup = "suplime.soup:main"
 [project.urls]
 Homepage = "https://github.com/rewayai/suplime"
 Model = "https://huggingface.co/rewayai/suplime"
+"Model (Large)" = "https://huggingface.co/rewayai/suplime-large"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/suplime"]
+
+# The sdist carries the code, tests, tools and training recipe — everything needed to
+# reproduce the work. It leaves out the Hub staging dirs and the README charts (3.3 MB of
+# images and model cards that no installer needs); the README links to them by URL.
+[tool.hatch.build.targets.sdist]
+exclude = ["assets", "hf", "hf-large", "dist", ".github", "results*"]
