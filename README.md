@@ -96,25 +96,22 @@ Diarization error rate (%), lower is better:
 | DiPCo | **30.44** | 30.92 | 37.56 † | — | 34.38 † |
 | **macro average (12)** | **20.94** | 21.00 | 22.53 | — | 26.10 |
 
-On pyannote's 8-corpus benchmark SUPlime-L is the strongest system in the table:
-15.85 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06), the base
-model (16.21) and DiariZen-L-s80-v2 (17.38). Across all 12 corpora the ranking
-flips and the base model wins by 0.06, because the four extra sets are far-field
-and dinner-party recordings where the larger backbone does not pay off. Both
-models beat DiariZen-L-s80-v2 by ~1.5 DER on the 12-corpus macro average, with
-the largest margins on close-talk AMI and on CHiME-6 / DiPCo; DiariZen stays
-clearly better on the Mandarin meeting corpora and MSDWild. Per-corpus hypothesis
-RTTMs are published with each model, see the model cards for threshold behaviour
-and known limitations.
+SUPlime-L leads the 8-corpus benchmark at 15.85 macro DER — ahead of `precision-2`
+(16.06), the base model (16.21) and DiariZen-L-s80-v2 (17.38) — while across all 12 corpora
+the base model takes it back by 0.06, the four extra sets being far-field and dinner-party
+audio where the larger backbone does not pay off. Both beat DiariZen by ~1.5 DER on the
+12-corpus average, with the largest margins on close-talk AMI and on CHiME-6 / DiPCo, while
+DiariZen stays clearly better on the Mandarin meeting corpora and MSDWild. Per-corpus
+hypothesis RTTMs ship with each model; the cards cover threshold behaviour and known
+limitations.
 
 **Scoring conditions.** Collar 0 s, overlapped speech scored, no oracle speaker count,
-reference cropped to each corpus' UEM, and **one clustering threshold (0.72) for every
-corpus**. The DiariZen-L-s80-v2, `precision-2` and `community-1` columns are the numbers
-their authors publish ([DiariZen](https://github.com/BUT-FIT/DiariZen),
-[pyannote](https://huggingface.co/pyannote/speaker-diarization-community-1)); † marks a
-corpus those authors do not report, where we ran their open-source pipeline unchanged
-(default parameters) on the same files with the same scoring. For NOTSOFAR-1 the DiariZen
-authors report 16.7 on a different session split.
+reference cropped to each corpus' UEM, one clustering threshold (0.72) everywhere. The
+other systems' columns are their authors' published numbers
+([DiariZen](https://github.com/BUT-FIT/DiariZen),
+[pyannote](https://huggingface.co/pyannote/speaker-diarization-community-1)), except where
+† marks our own re-run of their open-source pipeline, unchanged and on the same files —
+and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split.
 
 ## Architecture
 
