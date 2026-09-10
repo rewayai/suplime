@@ -17,11 +17,10 @@ The most accurate open-weights speaker diarization we know of, on both public su
 
 Two models on one recipe: [**SUPlime**](https://huggingface.co/rewayai/suplime) on a
 WavLM-Base+ backbone (114 M params) and
-[**SUPlime-L**](https://huggingface.co/rewayai/suplime-large) on WavLM-Large (349 M, ≈ 3×
-the inference cost). SUPlime-L is the better model on meeting and conversational audio;
-the base model wins on far-field and dinner-party recordings (CHiME-6, DiPCo, NOTSOFAR-1)
-and costs a third as much to run. Per-corpus numbers for all 12 corpora are in
-[Results](#results) below.
+[**SUPlime-L**](https://huggingface.co/rewayai/suplime-large) on WavLM-Large (349 M).
+SUPlime-L is the better model on meeting and conversational audio; the base model wins on
+far-field and dinner-party recordings (CHiME-6, DiPCo, NOTSOFAR-1). Per-corpus numbers for
+all 12 corpora are in [Results](#results) below.
 
 ## Install
 

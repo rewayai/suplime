@@ -41,7 +41,7 @@ Open-weights speaker diarization by [Re:WayAI](https://rewayai.ai), packaged for
 [pyannote.audio](https://github.com/pyannote/pyannote-audio) 4.x. One 16 kHz mono
 recording in, who-spoke-when out; no speaker count needed.
 
-This is the **WavLM-Base+** model: 114 M parameters, the cheaper of the two and the better one across all 12 corpora we score. Its sibling [SUPlime-L](https://huggingface.co/rewayai/suplime-large) swaps in a WavLM-Large backbone and leads pyannote's 8-corpus benchmark — **15.86 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)** — at roughly 3× the inference cost. Same recipe, same embedding, same clustering, same threshold; pick by domain, not by size, see [Which variant](#which-variant).
+This is the **WavLM-Base+** model: 114 M parameters, and the better of the two across all 12 corpora we score. Its sibling [SUPlime-L](https://huggingface.co/rewayai/suplime-large) swaps in a WavLM-Large backbone (349 M) and leads pyannote's 8-corpus benchmark — **15.86 macro DER, ahead of pyannoteAI's commercial `precision-2` (16.06)**. Same recipe, same embedding, same clustering, same threshold; pick by domain, see [Which variant](#which-variant).
 
 **Weights are released under CC BY-NC 4.0 (non-commercial)** because part of the
 training data is licensed for research use only, which rules out commercial use of
@@ -161,14 +161,12 @@ and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split
 | Parameters (segmentation) | 114 M | 349 M |
 | macro DER, 8-corpus benchmark | 16.21 | **15.86** |
 | macro DER, all 12 corpora | **20.94** | 21.02 |
-| Relative inference cost | 1× | ≈ 3× |
 
 Take SUPlime-L for meeting and conversational audio of the kind the 8-corpus benchmark
-covers, and when accuracy matters more than throughput. Take SUPlime for far-field and
-dinner-party audio (CHiME-6, DiPCo, NOTSOFAR-1), for CPU or edge deployment, or when you
-want the cheaper model that stays within 0.4 DER of the larger one almost everywhere. They
-share the embedding, the clustering and the operating threshold, so switching is a one-line
-change.
+covers. Take SUPlime for far-field and dinner-party audio (CHiME-6, DiPCo, NOTSOFAR-1), or
+when you want the smaller model — it stays within 0.4 DER of the larger one almost
+everywhere. They share the embedding, the clustering and the operating threshold, so
+switching is a one-line change.
 
 ## Limitations
 
@@ -178,8 +176,8 @@ change.
   41.56). Tune on your own data. A DER-optimal threshold tends to over-merge speakers;
   if your downstream metric is speaker-attributed WER, a slightly higher threshold is
   usually better.
-- A third of SUPlime-L's segmentation compute and memory, and ahead of it on the
-  12-corpus macro average — but 0.36 DER behind it on the 8-corpus benchmark.
+- 0.35 DER behind SUPlime-L on the 8-corpus benchmark, though ahead of it across
+  all 12 corpora.
 - The powerset head models at most 2 simultaneous speakers per frame and 4 speakers
   per 10 s window; recordings with heavy 3-way overlap are under-served.
 - Trained on 16 kHz meeting / conversational / broadcast / movie audio; telephone
