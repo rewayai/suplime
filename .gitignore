@@ -19,3 +19,7 @@ hf-large/segmentation/
 hf-large/embedding/
 hf-large/reproducible_research/
 results_large/
+
+# RTFx benchmark clips are cut from AMI by bench/rtfx/prepare_clips.py, not stored in git
+bench/rtfx/clips/
+bench/rtfx/rtfx_results*.json
