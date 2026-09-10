@@ -65,6 +65,53 @@ def load(system: str, device: str):
     return run, time.time() - t0, desc
 
 
+# pyannote fires a hook after each stage: segmentation, speaker_counting, embeddings
+# (once per batch, then once at the end) and discrete_diarization. Timing the gaps between
+# them says which stage a pipeline actually spends its time in — the question "why is one
+# system 2x faster" is not answerable from a single total.
+STAGES = [("segmentation", "segmentation"), ("speaker_counting", "speaker counting"),
+          ("embeddings", "embedding extraction"), ("discrete_diarization", "clustering")]
+
+
+def profile(system: str, run, clip: str, sync) -> dict:
+    """Per-stage seconds for one run of the longest clip. pyannote pipelines only."""
+    if system == "diarizen":
+        return {"unsupported": "DiariZenPipeline.__call__ takes no hook argument"}
+
+    import inspect
+
+    events = []
+
+    def hook(name, artifact=None, file=None, total=None, completed=None):
+        sync()
+        events.append((name, time.time()))
+
+    # run() closes over the pipeline; call it again with the hook if the signature allows
+    try:
+        sync()
+        t0 = time.time()
+        pipeline = run.__closure__[0].cell_contents
+        if "hook" not in inspect.signature(pipeline.apply).parameters:
+            return {"unsupported": "pipeline.apply takes no hook argument"}
+        pipeline(clip, hook=hook)
+        sync()
+        total_s = time.time() - t0
+    except Exception as e:  # profiling is a nicety, never fail the benchmark for it
+        return {"unsupported": f"{type(e).__name__}: {e}"}
+
+    marks, seen = {}, t0
+    for key, label in STAGES:
+        hits = [t for n, t in events if n == key]
+        if not hits:
+            continue
+        marks[label] = round(hits[-1] - seen, 2)
+        seen = hits[-1]
+    marks["output"] = round(total_s - (seen - t0), 2)
+    marks["total"] = round(total_s, 2)
+    marks["percent"] = {k: round(100 * v / total_s) for k, v in marks.items() if k != "total"}
+    return {"clip": os.path.basename(clip), **marks}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--system", required=True,
@@ -72,6 +119,10 @@ def main() -> int:
     ap.add_argument("--clips", nargs="+", required=True)
     ap.add_argument("--repeats", type=int, default=3)
     ap.add_argument("--device", default="cuda")
+    ap.add_argument("--profile", action="store_true",
+                    help="also report where the time goes inside the pipeline (pyannote "
+                         "systems only; adds a synchronise per stage, so run it separately "
+                         "from the timing runs)")
     a = ap.parse_args()
 
     import torch
@@ -90,6 +141,9 @@ def main() -> int:
     if a.device.startswith("cuda"):
         out["gpu"] = torch.cuda.get_device_name(0)
         out["gpu_mem_gb"] = round(torch.cuda.get_device_properties(0).total_memory / 2**30, 1)
+
+    if a.profile:
+        out["profile"] = profile(a.system, run, max(a.clips, key=clip_seconds), sync)
 
     for clip in a.clips:
         dur = clip_seconds(clip)

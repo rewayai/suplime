@@ -68,6 +68,19 @@ the right interpreter. Torch versions are the ones each system is known to work 
 cu130 for pyannote 4.x, cu128 for DiariZen (2.8 is the first release with sm_120 kernels, so
 both work on Blackwell and on Hopper).
 
+## Where the time goes
+
+`--profile` times the pipeline's internal stages via pyannote's hook, on the longest clip:
+
+```bash
+docker run --rm --gpus all rtfx --systems suplime suplime-large --profile
+```
+
+On CPU the split for SUPlime is **82% embedding extraction, 17% segmentation** — the WavLM
+backbone is the minority of the work, which is why the Base+ and Large variants land within
+~20% of each other despite a 3.3x difference in backbone size. Confirm the split on your GPU
+before drawing conclusions from it. DiariZen is skipped (its pipeline takes no hook).
+
 ## GPUs to cover
 
 RTX 5090, RTX PRO 5000 Blackwell, RTX PRO 6000 Blackwell, H100. Run the same image on each
