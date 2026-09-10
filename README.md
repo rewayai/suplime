@@ -23,10 +23,6 @@ the base model wins on far-field and dinner-party recordings (CHiME-6, DiPCo, NO
 and costs a third as much to run. Per-corpus numbers for all 12 corpora are in
 [Results](#results) below.
 
-Both model cards and the weights live on the Hugging Face Hub; this package is the code
-those checkpoints point at, and without it pyannote.audio cannot instantiate them. Weights
-are CC BY-NC 4.0 (non-commercial) — see [License](#license).
-
 ## Install
 
 ```bash
@@ -65,7 +61,8 @@ for turn, _, speaker in output.speaker_diarization.itertracks(yield_label=True):
 
 No Hugging Face token is needed: the repository is not gated.
 
-The same system without `config.yaml`:
+Or build the pipeline in Python, without the repo's `config.yaml` — useful for pointing
+at local checkpoints or setting the parameters yourself:
 
 ```python
 from suplime import SuplimeDiarization
@@ -141,47 +138,10 @@ and for NOTSOFAR-1 the DiariZen authors report 16.7 on a different session split
 
 ## Training
 
-The full recipe is in [`training/README.md`](https://github.com/rewayai/suplime/blob/main/training/README.md): the training
-splits of the 11 public corpora, the augmentation data, and
-one command that reproduces the published checkpoint on stock pyannote.audio:
-
-```bash
-pip install "suplime[train]"
-suplime-train --out runs/suplime --database training/database.yml --aug-root aug_data
-suplime-soup runs/suplime/checkpoints -k 5 -o suplime_avg5.ckpt
-```
-
-About 48 GPU-hours on one 32 GB card; interrupted runs resume from `last.ckpt`
-with the same command. SUPlime-L is a two-stage recipe rather than a flag — it needs a
-smaller per-rank batch (WavLM-Large OOMs at the default 32) and a second stage at effective
-batch 192; both commands are in
-[`training/README.md`](https://github.com/rewayai/suplime/blob/main/training/README.md#suplime-l-wavlm-large).
-
-## Development
-
-```bash
-pip install -e ".[test]"
-pytest                          # checkpoint tests skip unless hf/ holds the converted weights
-python tools/convert_checkpoints.py --segmentation <ckpt> --embedding <ckpt> --out hf
-python tools/upload_hf.py --repo rewayai/suplime
-python tools/upload_hf.py --repo rewayai/suplime-large --dir hf-large
-python tools/release_check.py --repo rewayai/suplime        # release gate, see below
-```
-
-`pytest` on a clean clone says nothing about the published artifacts: the weights are not
-in git, so every checkpoint test skips. **`tools/release_check.py` is the gate** — it
-downloads a Hub repo, loads the pipeline the way the model card tells users to, and checks
-the hyper-parameters, the powerset output and one inference run, all with
-`HF_HUB_OFFLINE=1`. Run it against both repos after every upload; add
-`--audio <recording>` to also assert that real speech comes back diarized. CI
-(`.github/workflows/tests.yml`) runs the unit tests on every push and the release gate on
-demand.
-
-`pip install suplime` accepts any pyannote.audio 4.x, but the published numbers and the
-checkpoint layouts were produced with one exact stack — `requirements-tested.txt`. Install
-from it to reproduce a number exactly. The segmentation model is rebuilt from a torchaudio
-bundle config, so `torch`/`torchaudio` upgrades are the drift to watch; suplime fails loudly
-rather than silently if the bundle attributes it reads ever change shape.
+The full training pipeline is released as well — corpus preparation, the augmentation setup,
+the training command and the checkpoint soup — so the models can be reproduced from scratch
+or trained further on your own data. Recipe and commands for both variants:
+[`training/README.md`](https://github.com/rewayai/suplime/blob/main/training/README.md).
 
 ## License
 
