@@ -23,6 +23,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      # pyannote.audio decodes audio files through torchcodec, which dlopens FFmpeg's
+      # shared libraries at run time. Without them every test that reads a wav dies with
+      # "Could not load libtorchcodec" — and the failure surfaces as a warning at import,
+      # so it is easy to miss until the tests run.
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Install pinned CPU torch
         run: |
           pip install --upgrade pip
@@ -32,7 +38,11 @@ jobs:
           pip install -r requirements-tested.txt
           pip install -e ".[test,hub]"
       - name: Show what we are testing against
-        run: python -c "import torch, torchaudio, pyannote.audio as p; print(torch.__version__, torchaudio.__version__, p.__version__)"
+        run: |
+          ffmpeg -version | head -1
+          python -c "import torch, torchaudio, pyannote.audio as p; print(torch.__version__, torchaudio.__version__, p.__version__)"
+          # fail loudly here rather than inside an unrelated test
+          python -c "from torchcodec.decoders import AudioDecoder; print('torchcodec OK')"
       - run: pytest -q -rs
 
   # The gate the unit tests cannot be: fetch what users actually download and run it.
@@ -47,6 +57,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
           pip install --upgrade pip
           pip install torch==2.14.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements-tested.txt
